@@ -44,6 +44,9 @@ from cosyvoice.utils.file_utils import load_wav
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(message)s')
 
+from funasr import AutoModel
+asr_model = AutoModel(model="paraformer-zh", vad_model="fsmn-vad",  punc_model="ct-punc")
+
 
 def speed_change(input_audio: np.ndarray, speed: float, sr: int):
     # 检查输入数据类型和声道数
@@ -120,7 +123,9 @@ def save_name(name):
     shutil.copyfile("./output.pt",f"./voices/{name}.pt")
     gr.Info("音色保存成功,存放位置为voices目录")
 
-    
+def auto_asr(audio_path):
+    res = asr_model.generate(audio_path)
+    return res[0]['text'] #.replace(" ", "")
 
 def generate_seed():
     seed = random.randint(1, 100000000)
@@ -333,6 +338,8 @@ def main():
         save_button.click(save_name, inputs=[new_name])
 
         wavs_dropdown.change(change_wav,[wavs_dropdown],[prompt_wav_upload,prompt_text])
+
+        prompt_wav_upload.change(fn=auto_asr, inputs=[prompt_wav_upload], outputs=[prompt_text])
 
         generate_button = gr.Button("生成音频")
         generate_button_stream = gr.Button("流式生成")
