@@ -21,7 +21,7 @@ services:
     container_name: 'cosy-3070'
     profiles:
       - production
-    extends: base
+    extends: cosy-base
     ports:
       - "9886:8001"
     deploy:
@@ -35,7 +35,7 @@ services:
     container_name: 'cosy-3080'
     profiles:
       - production
-    extends: base
+    extends: cosy-base
     ports:
       - "9876:8001"
     deploy:
@@ -49,7 +49,7 @@ services:
     container_name: 'cosy-p5000'  
     profiles:
       - production
-    extends: base
+    extends: cosy-base
     ports:
       - "9866:8001"
     deploy:
@@ -63,6 +63,6 @@ services:
     container_name: 'cosy-cpu'
     profiles:
       - production
-    extends: base
+    extends: cosy-base
     ports:
       - "9856:8001"

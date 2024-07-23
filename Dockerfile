@@ -4,7 +4,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /opt/CosyVoice
 COPY . /opt/CosyVoice
 
-RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN apt-get update -y
 RUN apt-get -y install python3-dev cmake python3-pip git socat curl ffmpeg wget vim
 #RUN git clone --recursive https://github.com/v3ucn/CosyVoice_For_Windows.git CosyVoice
