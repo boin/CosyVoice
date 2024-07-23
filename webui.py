@@ -340,6 +340,7 @@ def main():
         wavs_dropdown.change(change_wav,[wavs_dropdown],[prompt_wav_upload,prompt_text])
 
         prompt_wav_upload.change(fn=auto_asr, inputs=[prompt_wav_upload], outputs=[prompt_text])
+        prompt_wav_record.change(fn=auto_asr, inputs=[prompt_wav_record], outputs=[prompt_text])
 
         generate_button = gr.Button("生成音频")
         generate_button_stream = gr.Button("流式生成")
