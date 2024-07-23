@@ -19,9 +19,11 @@ protobuf==4.25
 pydantic==2.7.0
 rich==13.7.1
 soundfile==0.12.1
+torchaudio==2.0.2
 tensorboard==2.14.0
 wget==3.2
 PySoundFile
 pypinyin
 jieba
+funasr
 ffmpeg-python
