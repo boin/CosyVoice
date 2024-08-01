@@ -133,7 +133,7 @@ class CosyVoice:
                 # 加载数据
                 print(new_dropdown)
                 print("读取pt")
-                newspk = torch.load(f'./voices/{new_dropdown}.pt')
+                newspk = torch.load(f'{new_dropdown}')
                 # with open(f'./voices/{new_dropdown}.py','r',encoding='utf-8') as f:
                 #     newspk = f.read()
                 #     newspk = eval(newspk)
@@ -205,7 +205,7 @@ class CosyVoice:
                 # 加载数据
                 print(new_dropdown)
                 print("读取pt")
-                newspk = torch.load(f'./voices/{new_dropdown}.pt')
+                newspk = torch.load(f'{new_dropdown}')
                 # with open(f'./voices/{new_dropdown}.py','r',encoding='utf-8') as f:
                 #     newspk = f.read()
                 #     newspk = eval(newspk)

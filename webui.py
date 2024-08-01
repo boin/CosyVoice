@@ -268,7 +268,7 @@ def generate_audio_stream(tts_text, mode_checkbox_group, sft_dropdown, prompt_te
             # 加载数据
             print(new_dropdown)
             print("读取pt")
-            newspk = torch.load(f'./voices/{new_dropdown}.pt')
+            newspk = torch.load(f'{new_dropdown}')
             # with open(f'./voices/{new_dropdown}.py','r',encoding='utf-8') as f:
             #     newspk = f.read()
             #     newspk = eval(newspk)
@@ -315,9 +315,10 @@ def main():
             mode_checkbox_group = gr.Radio(choices=inference_mode_list, label='选择推理模式', value=inference_mode_list[0])
             instruction_text = gr.Text(label="操作步骤", value=instruct_dict[inference_mode_list[0]], scale=0.5)
             sft_dropdown = gr.Dropdown(choices=sft_spk, label='选择预训练音色', value=sft_spk[0], scale=0.25)
-            new_dropdown = gr.Dropdown(choices=spk_new, label='选择新增音色', value=spk_new[0],interactive=True)
-            refresh_new_button = gr.Button("刷新新增音色")
-            refresh_new_button.click(fn=refresh_choices, inputs=[], outputs=[new_dropdown])
+            #new_dropdown = gr.Dropdown(choices=spk_new, label='选择新增音色', value=spk_new[0],interactive=True)
+            new_dropdown = gr.FileExplorer(glob="**/*.pt", ignore_glob="*._*", root='./voices/', label="选择自定义音色", interactive=True, file_count="single")
+            #refresh_new_button = gr.Button("刷新新增音色")
+            #refresh_new_button.click(fn=refresh_choices, inputs=[], outputs=[new_dropdown])
             with gr.Column(scale=0.25):
                 seed_button = gr.Button(value="\U0001F3B2")
                 seed = gr.Number(value=0, label="随机推理种子")

@@ -6,8 +6,8 @@ services:
       - is_half=False
       - is_share=False
     volumes:
-      - /home/docker/mnt/TTD-Data/cosy-voice/pretrained_models:/opt/CosyVoice/pretrained_models
       - /home/docker/mnt/TTD-Data/cosy-voice/.cache:/opt/CosyVoice/.cache
+      - /home/docker/mnt/TeamSpace/TTD-Space/CosyVoice_Voices:/opt/CosyVoice/voices
     working_dir: /opt/CosyVoice
     shm_size: 32G
     stdin_open: true
