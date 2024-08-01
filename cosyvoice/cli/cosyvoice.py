@@ -65,7 +65,7 @@ class CosyVoice:
         return spks
 
     def inference_sft_stream(self, tts_text, spk_id,new_dropdown):
-        if new_dropdown != "无":
+        if new_dropdown is not None:
             spk_id = "中文女"
         tts_speeches = []
 
@@ -120,7 +120,7 @@ class CosyVoice:
 
     @time_it
     def inference_sft(self, tts_text, spk_id,new_dropdown):
-        if new_dropdown != "无":
+        if new_dropdown is not None:
             spk_id = "中文女"
         tts_speeches = []
         for i in self.frontend.text_normalize(tts_text, split=True):
@@ -129,7 +129,7 @@ class CosyVoice:
             print(i)
             # with open(r'srt_model_input.txt', 'a',encoding='utf-8') as f:
             #     f.write(str(model_input))
-            if new_dropdown != "无":
+            if new_dropdown is not None:
                 # 加载数据
                 print(new_dropdown)
                 print("读取pt")
@@ -189,7 +189,7 @@ class CosyVoice:
 
     def inference_instruct(self, tts_text, spk_id, instruct_text,new_dropdown):
 
-        if new_dropdown != "无":
+        if new_dropdown is not None:
             spk_id = "中文女"
 
         if self.frontend.instruct is False:
@@ -201,7 +201,7 @@ class CosyVoice:
         for i in self.frontend.text_normalize_instruct(tts_text, split=True):
             model_input = self.frontend.frontend_instruct(i, spk_id, instruct_text)
 
-            if new_dropdown != "无":
+            if new_dropdown is not None:
                 # 加载数据
                 print(new_dropdown)
                 print("读取pt")

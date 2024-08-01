@@ -254,7 +254,7 @@ def generate_audio_stream(tts_text, mode_checkbox_group, sft_dropdown, prompt_te
 
     spk_id = sft_dropdown
 
-    if new_dropdown != "无":
+    if new_dropdown is not None:
         spk_id = "中文女"
 
     joblist = cosyvoice.frontend.text_normalize_stream(tts_text, split=True)
@@ -264,7 +264,7 @@ def generate_audio_stream(tts_text, mode_checkbox_group, sft_dropdown, prompt_te
         print(i)
         tts_speeches = []
         model_input = cosyvoice.frontend.frontend_sft(i, spk_id)
-        if new_dropdown != "无":
+        if new_dropdown is not None:
             # 加载数据
             print(new_dropdown)
             print("读取pt")
