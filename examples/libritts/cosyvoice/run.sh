@@ -2,13 +2,13 @@
 # Copyright 2024 Alibaba Inc. All Rights Reserved.
 . ./path.sh || exit 1;
 
-stage=-1
-stop_stage=3
+stage=0
+stop_stage=5
 
 #data_url=www.openslr.org/resources/60
 #data_dir=/mnt/lyuxiang.lx/data/tts/openslr/libritts
 pretrained_model_dir=../../../pretrained_models/CosyVoice-300M
-data_dir=./
+data_dir=../../../
 
 # if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
 #   echo "Data Download"
@@ -21,7 +21,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
   echo "Data preparation, prepare wav.scp/text/utt2spk/spk2utt"
   for x in train val; do
     mkdir -p data/$x
-    python local/prepare_data.py --src_dir $data_dir/$x --des_dir data/$x
+    python3 local/prepare_data.py --src_dir $data_dir/$x --des_dir data/$x
   done
 fi
 
@@ -82,8 +82,8 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
   if [ $train_engine == 'deepspeed' ]; then
     echo "Notice deepspeed has its own optimizer config. Modify conf/ds_stage2.json if necessary"
   fi
-  cat data/{train-clean-100,train-clean-360,train-other-500}/parquet/data.list > data/train.data.list
-  cat data/{dev-clean,dev-other}/parquet/data.list > data/dev.data.list
+  cat data/train/parquet/data.list > data/train.data.list
+  cat data/val/parquet/data.list > data/dev.data.list
   for model in llm; do
     torchrun --nnodes=1 --nproc_per_node=$num_gpus \
         --rdzv_id=$job_id --rdzv_backend="c10d" --rdzv_endpoint="localhost:0" \
