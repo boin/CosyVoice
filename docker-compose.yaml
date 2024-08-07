@@ -5,6 +5,8 @@ services:
     environment:
       - is_half=False
       - is_share=False
+      - PYTHONIOENCODING=UTF-8       
+      - PYTHONPATH=./:./third_party/Matcha-TTS:./third_party/AcademiCodec:$PYTHONPATH
     volumes:
       - /home/docker/mnt/TTD-Data/cosy-voice/.cache:/opt/CosyVoice/.cache
       - /home/docker/mnt/TeamSpace/TTD-Space/CosyVoice_Voices:/opt/CosyVoice/voices
@@ -28,6 +30,7 @@ services:
     extends: cosy-base
     ports:
       - "9886:8001"
+      - "9887:9883"
     deploy:
       resources:
         reservations:
@@ -42,6 +45,8 @@ services:
     extends: cosy-base
     ports:
       - "9876:8001"
+      - "9877:9883"
+
     deploy:
       resources:
         reservations:
@@ -56,7 +61,7 @@ services:
     extends: cosy-base
     ports:
       - "9866:8001"
-      - "9883:9883" #train
+      - "9865:9883" #train
     deploy:
       resources:
         reservations:

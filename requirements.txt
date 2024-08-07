@@ -27,4 +27,5 @@ pypinyin
 jieba
 funasr
 ffmpeg-python
+deepspeed==0.14.0
 torchaudio==2.0.2

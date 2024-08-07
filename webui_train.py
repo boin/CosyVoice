@@ -15,8 +15,7 @@ def preprocess(train_input_path, val_input_path, output_path, pre_model_path):
         except Exception as e:
             pass
 
-        print(input_path)
-        print(temp1)
+        print('processing state', state, 'with input_path: ', input_path, 'temp_path:', temp1, temp2)
 
         #subprocess.run([r'.\py311\python.exe', 'local/prepare_data.py', 
         subprocess.run([r'python3', 'local/prepare_data.py', 
@@ -46,7 +45,8 @@ def preprocess(train_input_path, val_input_path, output_path, pre_model_path):
                         '--src_dir', str(temp1),
                         '--des_dir', str(temp2),
                         ])
-        return f'{state} make parquet list done!'
+        print("第四步结束")
+    return f'{state} make parquet list done!'
 
 
 def refresh_voice(output_path):
@@ -63,24 +63,16 @@ def train(output_path, pre_model_path):
     model_dir = Path(output_path)/'models'
     model_dir.mkdir(exist_ok=True, parents=True)
 
-    #cmd = rf".\py311\Scripts\torchrun.exe --nnodes 1 --nproc_per_node 1 --rdzv_id 1986 --rdzv_backend c10d --rdzv_endpoint localhost:0 cosyvoice/bin/train.py --train_engine torch_ddp --config conf/cosyvoice.yaml --model llm --checkpoint pretrained_models/CosyVoice-300M/llm.pt --ddp.dist_backend gloo --num_workers 1 --prefetch 100 --pin_memory --train_data {train_list} --cv_data {val_list} --model_dir {model_dir} --tensorboard_dir {model_dir}"
-    cmd = rf"torchrun --nnodes 1 --nproc_per_node 1 --rdzv_id 1986 --rdzv_backend c10d --rdzv_endpoint localhost:0 cosyvoice/bin/train.py --train_engine torch_ddp --config conf/cosyvoice.yaml --model llm --checkpoint pretrained_models/CosyVoice-300M/llm.pt --ddp.dist_backend gloo --num_workers 1 --prefetch 100 --pin_memory --train_data {train_list} --cv_data {val_list} --model_dir {model_dir} --tensorboard_dir {model_dir}"
-
-    print(cmd)
-
-    res = subprocess.Popen(cmd)
-
-    res.wait()
-
-    # subprocess.run([r'.\py311\torchrun', '--nnodes', '1', '--nproc_per_node', '1', '--rdzv_id', '1986',
-    #                 '--rdzv_backend', "c10d", '--rdzv_endpoint', "localhost:0", 
-    #                 'cosyvoice/bin/train.py','--train_engine','torch_ddp','--config','conf/cosyvoice.yaml', 
-    #                 '--model','llm', '--checkpoint', os.path.join(pre_model_path, 'llm.pt'), 
-    #                 '--ddp.dist_backend', 'nccl', '--num_workers', '1', '--prefetch', '100','--pin_memory', 
-    #                 '--deepspeed_config', './conf/ds_stage2.json', '--deepspeed.save_states', 'model+optimizer', 
-    #                 '--train_data', train_list, '--cv_data', val_list, 
-    #                 '--model_dir', str(model_dir), '--tensorboard_dir', str(model_dir),
-    #                 ])
+    subprocess.run([r'torchrun', '--nnodes', '1', '--nproc_per_node', '1', '--rdzv_id', '1986', '--rdzv_backend', "c10d", '--rdzv_endpoint', "localhost:0", 
+                    'cosyvoice/bin/train.py',
+                    '--train_engine','torch_ddp',
+                    '--config','conf/cosyvoice.yaml', 
+                    '--train_data', train_list, '--cv_data', val_list, 
+                    '--model','llm', '--checkpoint', os.path.join(pre_model_path, 'llm.pt'), 
+                    '--model_dir', str(model_dir), '--tensorboard_dir', str(model_dir),                    
+                    '--ddp.dist_backend', 'nccl', '--num_workers', '1', '--prefetch', '100','--pin_memory', 
+                    '--deepspeed_config', './conf/ds_stage2.json', '--deepspeed.save_states', 'model+optimizer', 
+                    ])
     return 'Train done!'
 
 
