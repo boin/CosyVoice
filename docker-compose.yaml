@@ -8,13 +8,12 @@ services:
     volumes:
       - /home/docker/mnt/TTD-Data/cosy-voice/.cache:/opt/CosyVoice/.cache
       - /home/docker/mnt/TeamSpace/TTD-Space/CosyVoice_Voices:/opt/CosyVoice/voices
+      - /home/docker/mnt/TTD-Data/cosy-voice/pretrained_models:/opt/CosyVoice/pretrained_models
     working_dir: /opt/CosyVoice
     shm_size: 32G
     stdin_open: true
     tty: true
     restart: unless-stopped
-    ports:
-      - "9883:9883"
 #=9886">3070Ti
 #=9876">3080Ti
 #=9866">P5000
@@ -54,6 +53,7 @@ services:
     extends: cosy-base
     ports:
       - "9866:8001"
+      - "9883:9883" #train
     deploy:
       resources:
         reservations:
