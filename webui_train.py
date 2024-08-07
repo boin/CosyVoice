@@ -18,26 +18,29 @@ def preprocess(train_input_path, val_input_path, output_path, pre_model_path):
         print(input_path)
         print(temp1)
 
-        subprocess.run([r'.\py311\python.exe', 'local/prepare_data.py', 
+        #subprocess.run([r'.\py311\python.exe', 'local/prepare_data.py', 
+        subprocess.run([r'python3', 'local/prepare_data.py', 
+
                         '--src_dir', input_path, 
                         '--des_dir', str(temp1)])
         
         print("第一步结束")
-
-        subprocess.run([r'.\py311\python.exe', 'tools/extract_embedding.py', 
+        #subprocess.run([r'.\py311\python.exe', 'tools/extract_embedding.py', 
+        subprocess.run([r'python3', 'tools/extract_embedding.py', 
                         '--dir', str(temp1), 
                         '--onnx_path', "pretrained_models/CosyVoice-300M/campplus.onnx"
                         ])
         
         print("第二步结束")
-
-        subprocess.run([r'.\py311\python.exe', 'tools/extract_speech_token.py', 
+        #subprocess.run([r'.\py311\python.exe', 'tools/extract_speech_token.py', 
+        subprocess.run([r'python3', 'tools/extract_speech_token.py', 
                         '--dir', str(temp1), 
                         '--onnx_path', "pretrained_models/CosyVoice-300M/speech_tokenizer_v1.onnx"
                         ])
         
         print("第三步结束")
-        subprocess.run([r'.\py311\python.exe', 'tools/make_parquet_list.py', 
+        #subprocess.run([r'.\py311\python.exe', 'tools/make_parquet_list.py', 
+        subprocess.run([r'python3', 'tools/make_parquet_list.py', 
                         '--num_utts_per_parquet', '100',
                         '--num_processes', '1',
                         '--src_dir', str(temp1),
@@ -60,7 +63,8 @@ def train(output_path, pre_model_path):
     model_dir = Path(output_path)/'models'
     model_dir.mkdir(exist_ok=True, parents=True)
 
-    cmd = rf".\py311\Scripts\torchrun.exe --nnodes 1 --nproc_per_node 1 --rdzv_id 1986 --rdzv_backend c10d --rdzv_endpoint localhost:0 cosyvoice/bin/train.py --train_engine torch_ddp --config conf/cosyvoice.yaml --model llm --checkpoint pretrained_models/CosyVoice-300M/llm.pt --ddp.dist_backend gloo --num_workers 1 --prefetch 100 --pin_memory --train_data {train_list} --cv_data {val_list} --model_dir {model_dir} --tensorboard_dir {model_dir}"
+    #cmd = rf".\py311\Scripts\torchrun.exe --nnodes 1 --nproc_per_node 1 --rdzv_id 1986 --rdzv_backend c10d --rdzv_endpoint localhost:0 cosyvoice/bin/train.py --train_engine torch_ddp --config conf/cosyvoice.yaml --model llm --checkpoint pretrained_models/CosyVoice-300M/llm.pt --ddp.dist_backend gloo --num_workers 1 --prefetch 100 --pin_memory --train_data {train_list} --cv_data {val_list} --model_dir {model_dir} --tensorboard_dir {model_dir}"
+    cmd = rf"torchrun --nnodes 1 --nproc_per_node 1 --rdzv_id 1986 --rdzv_backend c10d --rdzv_endpoint localhost:0 cosyvoice/bin/train.py --train_engine torch_ddp --config conf/cosyvoice.yaml --model llm --checkpoint pretrained_models/CosyVoice-300M/llm.pt --ddp.dist_backend gloo --num_workers 1 --prefetch 100 --pin_memory --train_data {train_list} --cv_data {val_list} --model_dir {model_dir} --tensorboard_dir {model_dir}"
 
     print(cmd)
 
@@ -95,7 +99,8 @@ def inference(mode, output_path, epoch, pre_model_path, text, voice):
     with open(json_path, 'wt', encoding='utf-8') as f:
         json.dump({voice:[text]}, f)
 
-    subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py', 
+    #subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py', 
+    subprocess.run([r'python3', 'cosyvoice/bin/inference.py', 
       '--mode', mode,
       '--gpu', '0', '--config', 'conf/cosyvoice.yaml',
       '--prompt_data', train_list, 

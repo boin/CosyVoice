@@ -13,6 +13,8 @@ services:
     stdin_open: true
     tty: true
     restart: unless-stopped
+    ports:
+      - "9883:9883"
 #=9886">3070Ti
 #=9876">3080Ti
 #=9866">P5000

@@ -16,7 +16,7 @@ def main():
         if not os.path.exists(txt):
             logger.warning('{} do not exsist'.format(txt))
             continue
-        with open(txt) as f:
+        with open(txt, encoding='utf-8') as f:
             content = ''.join(l.replace('\n', '') for l in f.readline())
         utt = os.path.basename(wav).replace('.wav', '')
         spk = utt.split('_')[0]
