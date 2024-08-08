@@ -216,6 +216,7 @@ def batch_backward(model, info_dict):
         scaled_loss = model.backward(info_dict['loss_dict']['loss'])
     else:
         scaled_loss = info_dict['loss_dict']['loss'] / info_dict['accum_grad']
+        scaled_loss.requires_grad = True
         scaled_loss.backward()
 
     info_dict['loss_dict']['loss'] = scaled_loss

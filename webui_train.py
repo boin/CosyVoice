@@ -15,7 +15,7 @@ def preprocess(train_input_path, val_input_path, output_path, pre_model_path):
         except Exception as e:
             pass
 
-        print('processing state', state, 'with input_path: ', input_path, 'temp_path:', temp1, temp2)
+        yield('processing state', state, 'with input_path: ', input_path, 'temp_path:', temp1, temp2)
 
         #subprocess.run([r'.\py311\python.exe', 'local/prepare_data.py', 
         subprocess.run([r'python3', 'local/prepare_data.py', 
@@ -23,21 +23,21 @@ def preprocess(train_input_path, val_input_path, output_path, pre_model_path):
                         '--src_dir', input_path, 
                         '--des_dir', str(temp1)])
         
-        print("第一步结束")
+        yield("第一步结束")
         #subprocess.run([r'.\py311\python.exe', 'tools/extract_embedding.py', 
         subprocess.run([r'python3', 'tools/extract_embedding.py', 
                         '--dir', str(temp1), 
                         '--onnx_path', "pretrained_models/CosyVoice-300M/campplus.onnx"
                         ])
         
-        print("第二步结束")
+        yield("第二步结束")
         #subprocess.run([r'.\py311\python.exe', 'tools/extract_speech_token.py', 
         subprocess.run([r'python3', 'tools/extract_speech_token.py', 
                         '--dir', str(temp1), 
                         '--onnx_path', "pretrained_models/CosyVoice-300M/speech_tokenizer_v1.onnx"
                         ])
         
-        print("第三步结束")
+        yield("第三步结束")
         #subprocess.run([r'.\py311\python.exe', 'tools/make_parquet_list.py', 
         subprocess.run([r'python3', 'tools/make_parquet_list.py', 
                         '--num_utts_per_parquet', '100',
@@ -45,7 +45,7 @@ def preprocess(train_input_path, val_input_path, output_path, pre_model_path):
                         '--src_dir', str(temp1),
                         '--des_dir', str(temp2),
                         ])
-        print("第四步结束")
+        yield("第四步结束")
     return f'{state} make parquet list done!'
 
 

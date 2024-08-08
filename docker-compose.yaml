@@ -61,7 +61,7 @@ services:
     extends: cosy-base
     ports:
       - "9866:8001"
-      - "9865:9883" #train
+      - "9867:9883" #train
     deploy:
       resources:
         reservations:
