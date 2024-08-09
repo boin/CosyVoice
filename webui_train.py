@@ -107,22 +107,22 @@ def inference(mode, output_path, epoch, pre_model_path, text, voice):
     
 
 with gr.Blocks() as demo:
-    pretrained_model_path = gr.Text('./pretrained_models/CosyVoice-300M', label='Pretrained model dir')
-    output_dir = gr.Text(label='Output dir',value="./data/output")
-    with gr.Tab('Train'):
-        train_input_path = gr.Text(label='Train input path',value="./data/train")
-        val_input_path = gr.Text(label='Val input path',value="./data/val")
-        preprocess_btn = gr.Button('Preprocess', variant='primary')
-        train_btn = gr.Button('Train', variant='primary')
-        status = gr.Text(label='Status')
-    with gr.Tab('Inference'):
+    pretrained_model_path = gr.Text('./pretrained_models/CosyVoice-300M', label='预训练模型文件夹')
+    output_dir = gr.Text(label='模型输出文件夹，不同的训练组合应该输出不到不同的文件夹中，否则会覆盖上一次的结果',value="./data/output")
+    with gr.Tab('训练'):
+        train_input_path = gr.Text(label='训练集目录',value="./data/train")
+        val_input_path = gr.Text(label='测试集目录',value="./data/val")
+        preprocess_btn = gr.Button('预处理（提取训练集音色数据）', variant='primary')
+        train_btn = gr.Button('开始训练', variant='primary')
+        status = gr.Text(label='状态')
+    with gr.Tab('推理'):
         with gr.Row():
-            voices = gr.Dropdown(label='Voices')
-            refresh = gr.Button('Refresh voices', variant='primary')
-            mode = gr.Dropdown(choices=['sft', 'zero_shot'], label='Mode')
-            epoch = gr.Number(value=8, interactive=True, precision=0, label='Epochs')
+            voices = gr.Dropdown(label='音色列表')
+            refresh = gr.Button('刷新音色列表', variant='primary')
+            mode = gr.Dropdown(choices=['sft模型', 'zero_shot（3秒复刻模型）'], label='Mode')
+            epoch = gr.Number(value=8, interactive=True, precision=0, label='使用训练第？轮次的模型')
         text = gr.Text()
-        inference_btn = gr.Button('Inference', variant='primary')
+        inference_btn = gr.Button('开始推理', variant='primary')
         out_audio = gr.Audio()
 
     preprocess_btn.click(preprocess, inputs=[train_input_path, val_input_path, output_dir, pretrained_model_path], outputs=status)
