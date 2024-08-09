@@ -108,10 +108,10 @@ def inference(mode, output_path, epoch, pre_model_path, text, voice):
 
 with gr.Blocks() as demo:
     pretrained_model_path = gr.Text('./pretrained_models/CosyVoice-300M', label='Pretrained model dir')
-    output_dir = gr.Text(label='Output dir',value="./output")
+    output_dir = gr.Text(label='Output dir',value="./data/output")
     with gr.Tab('Train'):
-        train_input_path = gr.Text(label='Train input path',value="./train")
-        val_input_path = gr.Text(label='Val input path',value="./val")
+        train_input_path = gr.Text(label='Train input path',value="./data/train")
+        val_input_path = gr.Text(label='Val input path',value="./data/val")
         preprocess_btn = gr.Button('Preprocess', variant='primary')
         train_btn = gr.Button('Train', variant='primary')
         status = gr.Text(label='Status')
