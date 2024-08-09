@@ -4,11 +4,13 @@ import gradio as gr
 import subprocess
 from pathlib import Path
 
+def data_path(path):
+    return Path('./data'/path)
 
 def preprocess(train_input_path, val_input_path, output_path, pre_model_path):
-    for state, input_path in zip(['train', 'val'], [train_input_path, val_input_path]):
-        temp1 = Path(output_path)/state/'temp1'
-        temp2 = Path(output_path)/state/'temp2'
+    for state, input_path in zip(['train', 'val'], [data_path(train_input_path), data_path(val_input_path)]):
+        temp1 = data_path(output_path)/state/'temp1'
+        temp2 = data_path(output_path)/state/'temp2'
         try:
             temp1.mkdir(parents=True)
             temp2.mkdir(parents=True)
@@ -50,7 +52,7 @@ def preprocess(train_input_path, val_input_path, output_path, pre_model_path):
 
 
 def refresh_voice(output_path):
-    content = (Path(output_path)/'train'/'temp1'/'utt2spk').read_text()
+    content = (data_path(output_path)/'train'/'temp1'/'utt2spk').read_text()
     voices = []
     for item in content.split('\n'):
         voices.append(item.split(' ')[0])
@@ -58,6 +60,7 @@ def refresh_voice(output_path):
 
     
 def train(output_path, pre_model_path):
+    output_path = data_path(output_path)
     train_list = os.path.join(output_path, 'train', 'temp2', 'data.list')
     val_list = os.path.join(output_path, 'val', 'temp2', 'data.list')
     model_dir = Path(output_path)/'models'
@@ -78,6 +81,7 @@ def train(output_path, pre_model_path):
 
 
 def inference(mode, output_path, epoch, pre_model_path, text, voice):
+    output_path = data_path(output_path)
     train_list = os.path.join(output_path, 'train', 'temp2', 'data.list')
     utt2data_list = Path(train_list).with_name('utt2data.list')
     llm_model = os.path.join(output_path, 'models', f'epoch_{epoch}_whole.pt')
@@ -107,11 +111,11 @@ def inference(mode, output_path, epoch, pre_model_path, text, voice):
     
 
 with gr.Blocks() as demo:
-    pretrained_model_path = gr.Text('./pretrained_models/CosyVoice-300M', label='预训练模型文件夹')
-    output_dir = gr.Text(label='模型输出文件夹，不同的训练组合应该输出不到不同的文件夹中，否则会覆盖上一次的结果',value="./data/output")
+    pretrained_model_path = gr.Text('pretrained_models/CosyVoice-300M', label='预训练模型文件夹')
+    output_dir = gr.Text(label='模型输出文件夹，不同的训练组合应该输出不到不同的文件夹中，否则会覆盖上一次的结果',value="test/output")
     with gr.Tab('训练'):
-        train_input_path = gr.Text(label='训练集目录',value="./data/train")
-        val_input_path = gr.Text(label='测试集目录',value="./data/val")
+        train_input_path = gr.Text(label='训练集目录',value="test/train")
+        val_input_path = gr.Text(label='测试集目录',value="test/val")
         preprocess_btn = gr.Button('预处理（提取训练集音色数据）', variant='primary')
         train_btn = gr.Button('开始训练', variant='primary')
         status = gr.Text(label='状态')
