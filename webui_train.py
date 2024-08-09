@@ -23,31 +23,37 @@ def preprocess(project_input_dir, train_input_path, val_input_path, output_path,
         out = subprocess.run([r'python3', 'local/prepare_data.py', 
 
                         '--src_dir', input_path, 
-                        '--des_dir', str(temp1)])
+                        '--des_dir', str(temp1)], 
+                        capture_output= True)
         if (out.returncode == 0):
             yield f"{state} 数据初始化完成"
         else:
-            return f"{state} 数据初始化出错 {out}"
+            yield f"{state} 数据初始化出错 {out}"
+            return
 
         #subprocess.run([r'.\py311\python.exe', 'tools/extract_embedding.py', 
         out = subprocess.run([r'python3', 'tools/extract_embedding.py', 
                         '--dir', str(temp1), 
                         '--onnx_path', "pretrained_models/CosyVoice-300M/campplus.onnx"
-                        ])
+                        ],
+                        capture_output= True)
         if (out.returncode == 0):
             yield f"{state} 导出embeddeding完成"
         else:
-            return f"{state} 导出embeddeding出错 {out}"
+            yield f"{state} 导出embeddeding出错 {out}"
+            return
 
         #subprocess.run([r'.\py311\python.exe', 'tools/extract_speech_token.py', 
         out = subprocess.run([r'python3', 'tools/extract_speech_token.py', 
                         '--dir', str(temp1), 
                         '--onnx_path', "pretrained_models/CosyVoice-300M/speech_tokenizer_v1.onnx"
-                        ])
+                        ],
+                        capture_output= True)
         if (out.returncode == 0):
             yield f"{state} 导出分词token完成"
         else:
-            return f"{state} 导出分词token出错 {out}"
+            yield f"{state} 导出分词token出错 {out}"
+            return
 
         #subprocess.run([r'.\py311\python.exe', 'tools/make_parquet_list.py', 
         out = subprocess.run([r'python3', 'tools/make_parquet_list.py', 
@@ -55,13 +61,15 @@ def preprocess(project_input_dir, train_input_path, val_input_path, output_path,
                         '--num_processes', '1',
                         '--src_dir', str(temp1),
                         '--des_dir', str(temp2),
-                        ])
+                        ],
+                        capture_output= True)
         if (out.returncode == 0):
             yield f"{state} 导出parquet列表完成"
         else:
-            return f"{state} 导出parquet列表出错 {out}"
+            yield f"{state} 导出parquet列表出错 {out}"
+            return
 
-    return '预处理全部完成，可以训练'
+    yield '预处理全部完成，可以训练'
 
 def refresh_voice(project_input_dir, output_path):
     content = (data_path(output_path, project_input_dir)/'train'/'temp1'/'utt2spk').read_text()
@@ -131,7 +139,7 @@ with gr.Blocks() as demo:
         val_input_path = gr.Text(label='测试集目录名',value="val")
         preprocess_btn = gr.Button('预处理（提取训练集音色数据）', variant='primary')
         train_btn = gr.Button('开始训练', variant='primary')
-        status = gr.Text(label='状态')
+        status = gr.TextArea(label='状态')
     with gr.Tab('推理'):
         with gr.Row():
             voices = gr.Dropdown(label='音色列表')
