@@ -32,7 +32,6 @@ __pycache__/
 .DS_Store
 
 exp
-data
 raw_wav
 tensorboard
 **/*build*
@@ -47,5 +46,5 @@ pretrained_models/*
 *_pb2_grpc.py
 *_pb2.py
 .cache/
-
+data
 py311/

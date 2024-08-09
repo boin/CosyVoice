@@ -8,8 +8,14 @@ from tqdm import tqdm
 logger = logging.getLogger()
 
 def main():
-    wavs = list(glob.glob('{}/*/*wav'.format(args.src_dir)))
-    #project_dir/音色名/xxx.wav
+    stage = os.path.basename(args.src_dir) 
+    src_dir = os.path.dirname(args.src_dir)
+
+    wavs = list(glob.glob('{}/*/{}/*wav'.format(src_dir, stage)))
+    #./data/test1/LLX/train/xxx.wav
+    if (len(wavs) < 1):
+        raise Exception(f"Not found any wavs in {src_dir}/*/{stage}/*wav")
+
     utt2wav, utt2text, utt2spk, spk2utt = {}, {}, {}, {}
     for wav in tqdm(wavs):
         txt = wav.replace('.wav', '.normalized.txt')
@@ -19,7 +25,7 @@ def main():
         with open(txt, encoding='utf-8') as f:
             content = ''.join(l.replace('\n', '') for l in f.readline())
         utt = os.path.basename(wav).replace('.wav', '') #提取 utt 如  #./音色名/xxx.wav  => 音色名
-        spk = os.path.dirname(wav).split('/')[-1] #根据文件夹音色名称 张三
+        spk = os.path.dirname(wav).split('/')[-2] #根据文件夹音色名称 张三
         utt2wav[utt] = wav
         utt2text[utt] = content
         utt2spk[utt] = spk
