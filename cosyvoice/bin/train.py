@@ -64,6 +64,10 @@ def get_args():
                         default=0,
                         type=int,
                         help='num of subprocess workers for reading')
+    parser.add_argument('--epoch_round',
+                        default=100,
+                        type=int,
+                        help='epoch round number')
     parser.add_argument('--prefetch',
                         default=100,
                         type=int,
@@ -129,7 +133,7 @@ def main():
     executor = Executor()
 
     # Start training loop
-    for epoch in range(info_dict['max_epoch']):
+    for epoch in range(args.epoch_round if args.epoch_round > 0 else info_dict['max_epoch']):
         executor.epoch = epoch
         train_dataset.set_epoch(epoch)
         dist.barrier()

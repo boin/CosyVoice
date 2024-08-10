@@ -32,12 +32,15 @@ def main(args):
     option = onnxruntime.SessionOptions()
     option.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
     option.intra_op_num_threads = 1
-    providers = ["CUDAExecutionProvider"]
+    providers = ["CUDAExecutionProvider"if torch.cuda.is_available() else "CPUExecutionProvider"]
     ort_session = onnxruntime.InferenceSession(args.onnx_path, sess_options=option, providers=providers)
 
     utt2speech_token = {}
     for utt in tqdm(utt2wav.keys()):
         audio, sample_rate = torchaudio.load(utt2wav[utt])
+        metadata = torchaudio.info(utt2wav[utt])
+        if metadata.num_channels > 1:
+            audio = torch.mean(audio, dim=0, keepdim=True)
         if sample_rate != 16000:
             audio = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)(audio)
         if audio.shape[1] / 16000 > 30:
