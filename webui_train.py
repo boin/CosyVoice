@@ -157,7 +157,7 @@ with gr.Blocks() as demo:
         with gr.Row():
             voices = gr.Dropdown(label='音色列表', info="根据训练集的数据，在上一步预处理中生成，点右侧刷新")
             refresh = gr.Button('刷新音色列表', variant='primary')
-            mode = gr.Dropdown(choices=['sft模型', 'zero_shot（3秒复刻模型）'], label='推理模式', value="sft模型", info="sft模型和3秒复刻模型可选，都试试")
+            mode = gr.Dropdown(choices=['sft', 'zero_shot'], label='推理模式', value="sft", info="SFT模型（SFT）和3秒复刻模型（zero-shot）可选，都试试")
             epoch = gr.Number(interactive=True, precision=0, label='模型轮次ID', info="使用模型输出文件夹中训练第？轮次的模型")
         text = gr.Text(label="输入文字")
         inference_btn = gr.Button('开始推理', variant='primary')

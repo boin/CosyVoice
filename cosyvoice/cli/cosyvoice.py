@@ -119,7 +119,7 @@ class CosyVoice:
 
 
     @time_it
-    def inference_sft(self, tts_text, spk_id,new_dropdown):
+    def inference_sft(self, tts_text, spk_id, new_dropdown):
         if new_dropdown is not None:
             spk_id = "中文女"
         tts_speeches = []
