@@ -49,3 +49,4 @@ pretrained_models/*
 *_pb2.py
 .cache/
 py311/
+logs/

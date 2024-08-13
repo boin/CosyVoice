@@ -11,6 +11,12 @@ def log(data):
     print(data)
     return data
 
+from gradio_log import Log
+def get_docker_logs():
+    base_path = "./logs/train.log"
+    log_path = (base_path) 
+    return log_path
+
 def preprocess(project_input_dir, train_input_path, val_input_path, output_path, pre_model_path):
     for state, input_path in zip(['train', 'val'], [data_path(train_input_path, project_input_dir), data_path(val_input_path, project_input_dir)]):
         temp1 = data_path(output_path, project_input_dir)/state/'temp1'
@@ -101,9 +107,9 @@ def train(project_input_dir, output_path, pre_model_path, thread_num, max_epoch)
                     '--deepspeed_config', './conf/ds_stage2.json', '--deepspeed.save_states', 'model+optimizer', 
                     ], env=dict(os.environ, PYTHONIOENCODING="UTF-8", PYTHONPATH="./:./third_party/Matcha-TTS:./third_party/AcademiCodec"))
     if out.returncode == 0:
-        return f"{state} 训练完成"
+        return f"训练完成"
     else:
-        return log(f"{state} 训练出错啦 {out}")
+        return log(f"训练出错啦 {out}")
 
 
 def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text, voice):
@@ -163,6 +169,7 @@ with gr.Blocks() as demo:
         text = gr.Text(label="输入文字")
         inference_btn = gr.Button('开始推理', variant='primary')
         out_audio = gr.Audio()
+    Log(get_docker_logs(), dark=True, xterm_font_size=12, render=bool(get_docker_logs()))
 
     preprocess_btn.click(preprocess, inputs=[project_input_dir, train_input_path, val_input_path, output_dir, pretrained_model_path], outputs=status)
     train_btn.click(train, inputs=[project_input_dir, output_dir, pretrained_model_path, thread_num, max_epoch], outputs=status)

@@ -31,3 +31,4 @@ pypinyin
 jieba
 funasr
 ffmpeg-python
+gradio_log

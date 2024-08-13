@@ -47,6 +47,11 @@ logging.basicConfig(level=logging.DEBUG,
 from funasr import AutoModel
 asr_model = AutoModel(model="paraformer-zh", vad_model="fsmn-vad",  punc_model="ct-punc")
 
+from gradio_log import Log
+def get_docker_logs():
+    base_path = "./logs/ui.log"
+    log_path = (base_path) 
+    return log_path
 
 def speed_change(input_audio: np.ndarray, speed: float, sr: int):
     # 检查输入数据类型和声道数
@@ -352,7 +357,8 @@ def main():
             autoplay=True,  # disable auto play for Windows, due to https://developer.chrome.com/blog/autoplay#webaudio
             interactive=False,
             show_label=True,show_download_button=True)
-        
+        Log(get_docker_logs(), dark=True, xterm_font_size=12, render=bool(get_docker_logs()))
+
         # result2 = gr.Textbox(label="翻译结果(会在项目目录生成two.srt/two.srt is generated in the current directory)")
 
         seed_button.click(generate_seed, inputs=[], outputs=seed)
