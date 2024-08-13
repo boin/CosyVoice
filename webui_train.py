@@ -146,11 +146,12 @@ with gr.Blocks() as demo:
         pretrained_model_path = gr.Text('pretrained_models/CosyVoice-300M', label='预训练模型文件夹', info='可选 300M-SFT/330M-Insturct 一般不用改')
     with gr.Tab('训练'):
         with gr.Row():
-            max_epoch = gr.Number(value=100, interactive=True, precision=0, label="训练总轮次",info="1-1000")
-            thread_num = gr.Number(value=1, interactive=True, precision=0, label="训练线程数量",info="每次+1康康，爆显存杀手")
-            train_input_path = gr.Text(label='训练集目录名，',value="train", info="需要自己按要求创建并存放数据，一般不用改")
+            train_input_path = gr.Text(label='训练集目录名',value="train", info="需要自己按要求创建并存放数据，一般不用改")
             val_input_path = gr.Text(label='测试集目录名',value="val", info="需要自己按要求创建并存放数据，一般不用改")
         preprocess_btn = gr.Button('开始预处理（提取训练集音色数据，如果只是要新增推理的音色，只点这个就行了）', variant='primary')
+        with gr.Row():
+            max_epoch = gr.Number(value=100, interactive=True, precision=0, label="训练总轮次",info="1-1000")
+            thread_num = gr.Number(value=1, interactive=True, precision=0, label="训练线程数量",info="每次+1康康，爆显存杀手")
         train_btn = gr.Button('开始训练（如果要把训练数据来影响底层模型，可以用训练的方式）', variant='primary')
         status = gr.Text(label='状态')
     with gr.Tab('推理'):
