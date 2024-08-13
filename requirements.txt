@@ -1,4 +1,6 @@
+--extra-index-url https://download.pytorch.org/whl/cu118
 conformer==0.3.2
+deepspeed==0.14.2; sys_platform == 'linux'
 diffusers==0.27.2
 gdown==5.1.0
 gradio==4.32.2
@@ -13,19 +15,19 @@ matplotlib==3.7.5
 modelscope==1.15.0
 networkx==3.1
 omegaconf==2.3.0
-onnxruntime-gpu==1.16.0
-openai-whisper
+onnxruntime-gpu==1.16.0; sys_platform == 'linux'
+openai-whisper==20231117
 protobuf==4.25
 pydantic==2.7.0
 rich==13.7.1
 soundfile==0.12.1
 tensorboard==2.14.0
-wget==3.2
 torch==2.0.1
+torchaudio==2.0.2
+wget==3.2
+
 PySoundFile
 pypinyin
 jieba
 funasr
 ffmpeg-python
-deepspeed==0.14.0
-torchaudio==2.0.2

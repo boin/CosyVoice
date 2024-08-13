@@ -82,7 +82,7 @@ def refresh_voice(project_input_dir, output_path):
     return gr.Dropdown(choices=voices)
 
     
-def train(project_input_dir, output_path, pre_model_path, thread_num, epoch_num):
+def train(project_input_dir, output_path, pre_model_path, thread_num, max_epoch):
     output_path = data_path(output_path, project_input_dir)
     train_list = os.path.join(output_path, 'train', 'temp2', 'data.list')
     val_list = os.path.join(output_path, 'val', 'temp2', 'data.list')
@@ -93,7 +93,7 @@ def train(project_input_dir, output_path, pre_model_path, thread_num, epoch_num)
                     'cosyvoice/bin/train.py',
                     '--train_engine','torch_ddp',
                     '--config','conf/cosyvoice.yaml', 
-                    '--epoch_round', str(epoch_num),
+                    '--max_epoch', str(max_epoch),
                     '--train_data', train_list, '--cv_data', val_list, 
                     '--model','llm', '--checkpoint', os.path.join(pre_model_path, 'llm.pt'), 
                     '--model_dir', str(model_dir), '--tensorboard_dir', str(model_dir),                    
@@ -146,7 +146,7 @@ with gr.Blocks() as demo:
         pretrained_model_path = gr.Text('pretrained_models/CosyVoice-300M', label='预训练模型文件夹', info='可选 300M-SFT/330M-Insturct 一般不用改')
     with gr.Tab('训练'):
         with gr.Row():
-            epoch_num = gr.Number(value=100, interactive=True, precision=0, label="训练总轮次",info="1-1000")
+            max_epoch = gr.Number(value=100, interactive=True, precision=0, label="训练总轮次",info="1-1000")
             thread_num = gr.Number(value=1, interactive=True, precision=0, label="训练线程数量",info="每次+1康康，爆显存杀手")
             train_input_path = gr.Text(label='训练集目录名，',value="train", info="需要自己按要求创建并存放数据，一般不用改")
             val_input_path = gr.Text(label='测试集目录名',value="val", info="需要自己按要求创建并存放数据，一般不用改")
@@ -164,7 +164,7 @@ with gr.Blocks() as demo:
         out_audio = gr.Audio()
 
     preprocess_btn.click(preprocess, inputs=[project_input_dir, train_input_path, val_input_path, output_dir, pretrained_model_path], outputs=status)
-    train_btn.click(train, inputs=[project_input_dir, output_dir, pretrained_model_path, thread_num, epoch_num], outputs=status)
+    train_btn.click(train, inputs=[project_input_dir, output_dir, pretrained_model_path, thread_num, max_epoch], outputs=status)
     inference_btn.click(inference, inputs=[mode, project_input_dir, output_dir, epoch, pretrained_model_path, text, voices], outputs=out_audio)
     refresh.click(refresh_voice, inputs=[project_input_dir, output_dir], outputs=voices)
 
