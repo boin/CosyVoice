@@ -14,10 +14,10 @@
 import os
 os.environ['CURL_CA_BUNDLE'] = ''
 os.environ['HF_DATASETS_OFFLINE'] = '1'
-# os.environ['MODELSCOPE_CACHE'] ='./.cache/modelscope'
-# os.environ['TORCH_HOME'] = './.cache/torch'  #设置torch的缓存目录
-# os.environ["HF_HOME"] = "./.cache/huggingface" #设置transformer的缓存目录
-# os.environ['XDG_CACHE_HOME']="./.cache"
+os.environ['MODELSCOPE_CACHE'] ='./.cache/modelscope'
+os.environ['TORCH_HOME'] = './.cache/torch'  #设置torch的缓存目录
+os.environ["HF_HOME"] = "./.cache/huggingface" #设置transformer的缓存目录
+os.environ['XDG_CACHE_HOME']="./.cache"
 import sys
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append('{}/third_party/AcademiCodec'.format(ROOT_DIR))
