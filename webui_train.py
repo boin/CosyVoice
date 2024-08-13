@@ -2,6 +2,7 @@ import json
 import os
 import gradio as gr
 import subprocess
+import psutil
 from pathlib import Path
 
 def data_path(path, base):
@@ -140,7 +141,18 @@ def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text,
       '--result_dir', str(res_dir)])
     output_path = str(Path(res_dir)/f'{voice}_0.wav')
     return output_path
-    
+
+def stop_training(proc_name='torchrun'):
+    num = 0
+    for proc in psutil.process_iter():
+        if proc.name() == proc_name:
+            try:
+                proc.kill()
+                num = num + 1
+            except OSError:
+                pass
+    return f'停止了{num}个进程'
+
 
 with gr.Blocks() as demo:
     with gr.Group():
@@ -156,9 +168,11 @@ with gr.Blocks() as demo:
             val_input_path = gr.Text(label='测试集目录名',value="val", info="需要自己按要求创建并存放数据，一般不用改")
         preprocess_btn = gr.Button('开始预处理（提取训练集音色数据，如果只是要新增推理的音色，只点这个就行了）', variant='primary')
         with gr.Row():
-            max_epoch = gr.Number(value=100, interactive=True, precision=0, label="训练总轮次",info="1-1000")
+            max_epoch = gr.Number(value=10, interactive=True, precision=0, label="训练总轮次",info="1-1000")
             thread_num = gr.Number(value=1, interactive=True, precision=0, label="训练线程数量",info="每次+1康康，爆显存杀手")
-        train_btn = gr.Button('开始训练（如果要把训练数据来影响底层模型，可以用训练的方式）', variant='primary')
+        with gr.Row():
+            train_btn = gr.Button('开始训练（如果要把训练数据来影响底层模型，可以用训练的方式）', variant='primary', scale=8)
+            stop_btn = gr.Button('停止训练', variant="stop", scale=2)
         status = gr.Text(label='状态')
     with gr.Tab('推理'):
         with gr.Row():
@@ -175,5 +189,6 @@ with gr.Blocks() as demo:
     train_btn.click(train, inputs=[project_input_dir, output_dir, pretrained_model_path, thread_num, max_epoch], outputs=status)
     inference_btn.click(inference, inputs=[mode, project_input_dir, output_dir, epoch, pretrained_model_path, text, voices], outputs=out_audio)
     refresh.click(refresh_voice, inputs=[project_input_dir, output_dir], outputs=voices)
+    stop_btn.click(stop_training, outputs=[status])
 
 demo.launch(server_name='0.0.0.0',server_port=9883,inbrowser=True)

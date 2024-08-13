@@ -5,7 +5,7 @@ WORKDIR /opt/CosyVoice
 COPY . /opt/CosyVoice
 
 RUN apt-get update -y
-RUN apt-get -y install git curl ffmpeg wget vim locales
+RUN apt-get -y install git curl ffmpeg wget vim locales apt-utils libaio-dev
 RUN locale-gen en_US en_US.UTF-8
 RUN pip3 install -r requirements.txt
 RUN pip3 install -U numpy==1.26.4
