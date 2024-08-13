@@ -316,7 +316,7 @@ def main():
             instruction_text = gr.Text(label="操作步骤", value=instruct_dict[inference_mode_list[0]], scale=0.5)
             sft_dropdown = gr.Dropdown(choices=sft_spk, label='选择预训练音色', value=sft_spk[0], scale=0.25)
             #new_dropdown = gr.Dropdown(choices=spk_new, label='选择新增音色', value=spk_new[0],interactive=True)
-            new_dropdown = gr.FileExplorer(glob="**/*.pt", ignore_glob="*._*", root='./voices/', label="选择自定义音色", interactive=True, file_count="single")
+            new_dropdown = gr.FileExplorer(glob="**/*.pt", ignore_glob="*._*", root_dir='./voices/', label="选择自定义音色", interactive=True, file_count="single")
             #refresh_new_button = gr.Button("刷新新增音色")
             #refresh_new_button.click(fn=refresh_choices, inputs=[], outputs=[new_dropdown])
             with gr.Column(scale=0.25):

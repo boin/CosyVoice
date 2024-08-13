@@ -5,8 +5,9 @@ services:
     environment:
       - is_half=False
       - is_share=False
+      - LC_ALL=en_US.UTF-8
       - PYTHONIOENCODING=UTF-8       
-      - PYTHONPATH=./:./third_party/Matcha-TTS:./third_party/AcademiCodec:$PYTHONPATH
+      - PYTHONPATH=./:./third_party/Matcha-TTS:./third_party/AcademiCodec
     volumes:
       - /home/docker/mnt/TTD-Data/cosy-voice/.cache:/opt/CosyVoice/.cache
       - /home/docker/mnt/TeamSpace/TTD-Space/CosyVoice_Voices:/opt/CosyVoice/voices
