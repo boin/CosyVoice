@@ -28,7 +28,7 @@ services:
       - production
     extends: cosy-base
     ports:
-      - "9886:8001"
+      - "9886:8000"
       - "9887:9883"
     deploy:
       resources:
@@ -43,7 +43,7 @@ services:
       - production
     extends: cosy-base
     ports:
-      - "9876:8001"
+      - "9876:8000"
       - "9877:9883"
 
     deploy:
@@ -59,7 +59,7 @@ services:
       - production
     extends: cosy-base
     ports:
-      - "9866:8001"
+      - "9866:8000"
       - "9867:9883" #train
     deploy:
       resources:
@@ -74,4 +74,4 @@ services:
       - production
     extends: cosy-base
     ports:
-      - "9856:8001"
+      - "9856:8000"
