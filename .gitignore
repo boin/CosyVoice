@@ -50,3 +50,4 @@ pretrained_models/*
 .cache/
 py311/
 logs/
+ttd_lib/

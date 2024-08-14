@@ -165,8 +165,10 @@ instruct_dict = {'预训练音色': '1. 选择预训练音色\n2.点击生成音
 def change_instruction(mode_checkbox_group):
     return instruct_dict[mode_checkbox_group]
 
-def generate_audio(tts_text, mode_checkbox_group, sft_dropdown, prompt_text, prompt_wav_upload, prompt_wav_record, instruct_text, seed,speed_factor,new_dropdown):
-    if prompt_wav_upload is not None:
+def generate_audio(tts_text, mode_checkbox_group, sft_dropdown, prompt_text, prompt_wav_upload, prompt_wav_record, instruct_text, seed,speed_factor, new_dropdown, prompt_wav_select):
+    if prompt_wav_select is not None:
+        prompt_wav = prompt_wav_select
+    elif prompt_wav_upload is not None:
         prompt_wav = prompt_wav_upload
     elif prompt_wav_record is not None:
         prompt_wav = prompt_wav_record
@@ -216,7 +218,7 @@ def generate_audio(tts_text, mode_checkbox_group, sft_dropdown, prompt_text, pro
     if mode_checkbox_group == '预训练音色':
         logging.info('get sft inference request')
         set_all_random_seed(seed)
-        output = cosyvoice.inference_sft(tts_text,sft_dropdown,new_dropdown)
+        output = cosyvoice.inference_sft(tts_text,sft_dropdown, new_dropdown)
     elif mode_checkbox_group == '3s极速复刻':
         logging.info('get zero_shot inference request')
         prompt_speech_16k = postprocess(load_wav(prompt_wav, prompt_sr))
@@ -230,7 +232,7 @@ def generate_audio(tts_text, mode_checkbox_group, sft_dropdown, prompt_text, pro
     else:
         logging.info('get instruct inference request')
         set_all_random_seed(seed)
-        output = cosyvoice.inference_instruct(tts_text, sft_dropdown, instruct_text,new_dropdown)
+        output = cosyvoice.inference_instruct(tts_text, sft_dropdown, instruct_text, new_dropdown)
 
     
     if speed_factor != 1.0:
@@ -247,7 +249,7 @@ def generate_audio(tts_text, mode_checkbox_group, sft_dropdown, prompt_text, pro
     return (target_sr, audio_data)
 
 
-def generate_audio_stream(tts_text, mode_checkbox_group, sft_dropdown, prompt_text, prompt_wav_upload, prompt_wav_record, instruct_text, seed,speed_factor,new_dropdown):
+def generate_audio_stream(tts_text, mode_checkbox_group, sft_dropdown, prompt_text, prompt_wav_upload, prompt_wav_record, instruct_text, seed,speed_factor, new_dropdown, prompt_wav_select):
 
     if mode_checkbox_group != '预训练音色':
         gr.Warning('流式推理只支持预训练音色推理')
@@ -332,6 +334,7 @@ def main():
             wavs_dropdown = gr.Dropdown(label="参考音频列表",choices=reference_wavs,value="请选择参考音频或者自己上传",interactive=True)
             refresh_button = gr.Button("刷新参考音频")
             refresh_button.click(fn=change_choices, inputs=[], outputs=[wavs_dropdown])
+            prompt_wav_select = gr.FileExplorer(glob="**/*.wav", ignore_glob="*._*", root_dir='./ttd_lib/', label="从音色库选择", interactive=True, file_count="single")
             prompt_wav_upload = gr.Audio(sources='upload', type='filepath', label='选择prompt音频文件，注意采样率不低于16khz')
             prompt_wav_record = gr.Audio(sources='microphone', type='filepath', label='录制prompt音频文件')
         prompt_text = gr.Textbox(label="输入prompt文本", lines=1, placeholder="请输入prompt文本，需与prompt音频内容一致，暂时不支持自动识别...", value='')
@@ -345,6 +348,7 @@ def main():
 
         wavs_dropdown.change(change_wav,[wavs_dropdown],[prompt_wav_upload,prompt_text])
 
+        prompt_wav_select.change(fn=auto_asr, inputs=[prompt_wav_select], outputs=[prompt_text])
         prompt_wav_upload.change(fn=auto_asr, inputs=[prompt_wav_upload], outputs=[prompt_text])
         prompt_wav_record.change(fn=auto_asr, inputs=[prompt_wav_record], outputs=[prompt_text])
 
@@ -352,22 +356,27 @@ def main():
         generate_button_stream = gr.Button("流式生成")
 
         # audio_output = gr.Audio(label="合成音频")
-        audio_output = gr.Audio(label="合成音频",value=None,
+        audio_output = gr.Audio(
+            label="合成音频",
+            value=None,
             streaming=True,
             autoplay=True,  # disable auto play for Windows, due to https://developer.chrome.com/blog/autoplay#webaudio
             interactive=False,
-            show_label=True,show_download_button=True)
+            show_label=True,
+            show_download_button=True
+        )
+
         Log(get_docker_logs(), dark=True, xterm_font_size=12, render=bool(get_docker_logs()))
 
         # result2 = gr.Textbox(label="翻译结果(会在项目目录生成two.srt/two.srt is generated in the current directory)")
-
+        #audio_output
         seed_button.click(generate_seed, inputs=[], outputs=seed)
         generate_button.click(generate_audio,
-                              inputs=[tts_text, mode_checkbox_group, sft_dropdown, prompt_text, prompt_wav_upload, prompt_wav_record, instruct_text, seed,speed_factor,new_dropdown],
+                              inputs=[tts_text, mode_checkbox_group, sft_dropdown, prompt_text, prompt_wav_upload, prompt_wav_record, instruct_text, seed,speed_factor, new_dropdown, prompt_wav_select],
                               outputs=[audio_output])
 
         generate_button_stream.click(generate_audio_stream,
-                              inputs=[tts_text, mode_checkbox_group, sft_dropdown, prompt_text, prompt_wav_upload, prompt_wav_record, instruct_text, seed,speed_factor,new_dropdown],
+                              inputs=[tts_text, mode_checkbox_group, sft_dropdown, prompt_text, prompt_wav_upload, prompt_wav_record, instruct_text, seed,speed_factor, new_dropdown, prompt_wav_select],
                               outputs=[audio_output])
         mode_checkbox_group.change(fn=change_instruction, inputs=[mode_checkbox_group], outputs=[instruction_text])
     demo.queue(max_size=4, default_concurrency_limit=2)
