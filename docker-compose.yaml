@@ -76,3 +76,4 @@ services:
     extends: cosy-base
     ports:
       - "9856:8000"
+      - "9857:9883" #train
