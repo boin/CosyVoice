@@ -50,7 +50,7 @@ asr_model = AutoModel(
     vad_model="fsmn-vad",
     vad_kwargs={"max_single_segment_time": 30000},
     device="cuda:0",
-    disable_update=True
+    disable_update=True,
 )
 
 
