@@ -40,6 +40,9 @@ def main(args):
         args.onnx_path, sess_options=option, providers=providers
     )
 
+    # gen spk2info.pt        #{'embedding': 'speech_token': 'speech_feat': }
+    base_spkinfo = torch.load("./pretrained_models/CosyVoice-300M/spk2info.pt")
+
     utt2embedding, spk2embedding = {}, {}
     for utt in tqdm(utt2wav.keys()):
         audio, sample_rate = torchaudio.load(utt2wav[utt])
@@ -63,18 +66,17 @@ def main(args):
             spk2embedding[spk] = []
         spk2embedding[spk].append(embedding)
     for k, v in spk2embedding.items():
-        spk2embedding[k] = torch.tensor(v).mean(dim=0).tolist()
+        flat_embedding = torch.tensor(v).mean(dim=0)
+        spk2embedding[k] = flat_embedding.tolist()
+        base_spkinfo[k] = {
+            "embedding": flat_embedding,
+            "speech_feat": [],
+            "speech_token": [],
+        }
 
     torch.save(utt2embedding, "{}/utt2embedding.pt".format(args.dir))
     torch.save(spk2embedding, "{}/spk2embedding.pt".format(args.dir))
 
-    # gen spk2info.pt        #{'embedding': 'speech_token': 'speech_feat': }
-    base_spkinfo = torch.load("./pretrained_models/CosyVoice-300M/spk2info.pt")
-    base_spkinfo[spk] = {
-        "embedding": spk2embedding,
-        "speech_feat": [],
-        "speech_token": [],
-    }
     torch.save(base_spkinfo, "{}/spk2info.pt".format(args.dir))
 
 

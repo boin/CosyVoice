@@ -17,16 +17,17 @@ import os
 import random
 import shutil
 import sys
+from pathlib import Path
+
 import ffmpeg
 import gradio as gr
 import librosa
 import numpy as np
 import torch
 import torchaudio
-
 from funasr import AutoModel
+from funasr.utils.postprocess_utils import rich_transcription_postprocess
 from gradio_log import Log
-from pathlib import Path
 
 from cosyvoice.cli.cosyvoice import CosyVoice
 from cosyvoice.utils.file_utils import load_wav
@@ -44,7 +45,12 @@ sys.path.append("{}/third_party/Matcha-TTS".format(ROOT_DIR))
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
 
-asr_model = AutoModel(model="paraformer-zh", vad_model="fsmn-vad", punc_model="ct-punc")
+asr_model = AutoModel(
+    model="iic/SenseVoiceSmall",
+    vad_model="fsmn-vad",
+    vad_kwargs={"max_single_segment_time": 30000},
+    device="cuda:0",
+)
 
 
 def get_docker_logs():
@@ -126,8 +132,16 @@ def save_name(name):
 
 
 def auto_asr(audio_path):
-    res = asr_model.generate(audio_path)
-    return res[0]["text"]  # .replace(" ", "")
+    res = asr_model.generate(
+        input=audio_path,
+        cache={},
+        language="auto",  # "zn", "en", "yue", "ja", "ko", "nospeech"
+        use_itn=True,
+        batch_size_s=60,
+        merge_vad=True,
+        merge_length_s=15,
+    )
+    return rich_transcription_postprocess(res[0]["text"]).replace(" ", "")
 
 
 def generate_seed():
@@ -161,17 +175,17 @@ def change_llm_model(llm_path="", model_dir=""):
         model_dir (_type_): 模型路径 默认 ./pretrained_modles/-300M
         llm_dir (_type_): LLM PT路径 默认 {model_dir}/llm.pt
     """
-    global cosyvoice
-    model_dir = args.model_dir
-    spkinfo_dir = f'{model_dir}/spk2info.pt'
-    spkinfo_path = ''
-    if os.path.exists(llm_path): #有自定义值且存在
-        llm_path =  os.path.exists(llm_path) and llm_path or f"{model_dir}/llm.pt"
-        spkinfo_path = Path(f"{os.path.dirname(llm_path)}/../train/temp1/spk2info.pt").resolve()
-    if os.path.exists(spkinfo_path):
-        spkinfo_dir = spkinfo_path
+    model_dir = model_dir if model_dir else args.model_dir
+    spkinfo_dir = f"{model_dir}/spk2info.pt"
+    spkinfo_path = ""
+    if llm_path:
+        spkinfo_path = Path(
+            f"{os.path.dirname(llm_path)}/../train/temp1/spk2info.pt"
+        ).resolve()
+    else:
+        llm_path = f"{model_dir}/llm.pt"
+    spkinfo_dir = spkinfo_path if os.path.exists(spkinfo_path) else spkinfo_dir
     cosyvoice = CosyVoice(model_dir, llm_path, spkinfo_dir)
-    
     return {"choices": cosyvoice.list_avaliable_spks(), "__type__": "update"}
 
 
