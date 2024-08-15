@@ -163,14 +163,14 @@ def change_llm_model(llm_path="", model_dir=""):
     """
     global cosyvoice
     model_dir = args.model_dir
-    spkinfo_dir = f'{args.model_dir}/spk2info.pt'
-    llm_dir = os.path.dirname(llm_path)
-    if not os.path.exists(llm_dir):
-        llm_dir = f"{model_dir}/llm.pt"
-    spkinfo_path = Path(f"{llm_dir}/../train/temp1/spk2info.pt").resolve()
-    if not os.path.exists(spkinfo_path):
+    spkinfo_dir = f'{model_dir}/spk2info.pt'
+    spkinfo_path = ''
+    if os.path.exists(llm_path): #有自定义值且存在
+        llm_path =  os.path.exists(llm_path) and llm_path or f"{model_dir}/llm.pt"
+        spkinfo_path = Path(f"{os.path.dirname(llm_path)}/../train/temp1/spk2info.pt").resolve()
+    if os.path.exists(spkinfo_path):
         spkinfo_dir = spkinfo_path
-    cosyvoice = CosyVoice(model_dir, llm_dir, spkinfo_dir)
+    cosyvoice = CosyVoice(model_dir, llm_path, spkinfo_dir)
     return cosyvoice.list_avaliable_spks()
 
 
