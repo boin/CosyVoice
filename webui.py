@@ -50,6 +50,7 @@ asr_model = AutoModel(
     vad_model="fsmn-vad",
     vad_kwargs={"max_single_segment_time": 30000},
     device="cuda:0",
+    disable_update=True
 )
 
 
@@ -175,6 +176,7 @@ def change_llm_model(llm_path="", model_dir=""):
         model_dir (_type_): 模型路径 默认 ./pretrained_modles/-300M
         llm_dir (_type_): LLM PT路径 默认 {model_dir}/llm.pt
     """
+    global cosyvoice
     model_dir = model_dir if model_dir else args.model_dir
     spkinfo_dir = f"{model_dir}/spk2info.pt"
     spkinfo_path = ""
