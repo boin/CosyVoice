@@ -163,6 +163,7 @@ def change_llm_model(llm_path="", model_dir=""):
     """
     global cosyvoice
     model_dir = args.model_dir
+    spkinfo_dir = f'{args.model_dir}/spk2info.pt'
     llm_dir = os.path.dirname(llm_path)
     if not os.path.exists(llm_dir):
         llm_dir = f"{model_dir}/llm.pt"
