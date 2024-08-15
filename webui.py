@@ -171,7 +171,8 @@ def change_llm_model(llm_path="", model_dir=""):
     if os.path.exists(spkinfo_path):
         spkinfo_dir = spkinfo_path
     cosyvoice = CosyVoice(model_dir, llm_path, spkinfo_dir)
-    return cosyvoice.list_avaliable_spks()
+    
+    return {"choices": cosyvoice.list_avaliable_spks(), "__type__": "update"}
 
 
 inference_mode_list = ["预训练音色", "3s极速复刻", "跨语种复刻", "自然语言控制"]
