@@ -35,7 +35,7 @@ def main(args):
     option = onnxruntime.SessionOptions()
     option.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
     option.intra_op_num_threads = 1
-    providers = (["CUDAExecutionProvider", "CPUExecutionProvider"] if torch.cuda.is_available() else ["CPUExecutionProvider"])
+    providers = ["CPUExecutionProvider", "CUDAExecutionProvider"]
     ort_session = onnxruntime.InferenceSession(
         args.onnx_path, sess_options=option, providers=providers
     )
@@ -66,8 +66,8 @@ def main(args):
             spk2embedding[spk] = []
         spk2embedding[spk].append(embedding)
     for k, v in spk2embedding.items():
-        flat_embedding = torch.tensor(v).mean(dim=0)
-        spk2embedding[k] = flat_embedding.tolist()
+        flat_embedding = torch.tensor(v).mean(dim=0, keepdim=True)
+        spk2embedding[k] = (flat_embedding.tolist())[0]
         base_spkinfo[k] = {
             "embedding": flat_embedding,
             "speech_feat": [],
