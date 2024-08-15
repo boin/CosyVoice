@@ -35,7 +35,7 @@ def main(args):
     option = onnxruntime.SessionOptions()
     option.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
     option.intra_op_num_threads = 1
-    providers = ["CPUExecutionProvider"]
+    providers = (["GPUExecutionProvider", "CPUExecutionProvider"] if torch.cuda.is_available() else ["CPUExecutionProvider"])
     ort_session = onnxruntime.InferenceSession(
         args.onnx_path, sess_options=option, providers=providers
     )
