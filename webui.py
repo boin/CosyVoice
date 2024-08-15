@@ -155,15 +155,14 @@ def postprocess(speech, top_db=60, hop_length=220, win_length=440):
     return speech
 
 
-def change_llm_model(model_dir: str, llm_dir: str):
+def change_llm_model(llm_dir="", model_dir=""):
     """变更模型路径和地址
     Args:
         model_dir (_type_): 模型路径 默认 ./pretrained_modles/-300M
         llm_dir (_type_): LLM PT路径 默认 {model_dir}/llm.pt
     """
     global cosyvoice
-    if not os.path.exists(model_dir):
-        model_dir = args.model_dir
+    model_dir = args.model_dir
     if not os.path.exists(llm_dir):
         llm_dir = f"{model_dir}/llm.pt"
     spkinfo_path = Path(f"{model_dir}/../train/temp1/spk2info.pt")
@@ -466,7 +465,7 @@ def main():
 
         save_button.click(save_name, inputs=[new_name])
 
-        llm_model.change(change_llm_model, outputs=[sft_dropdown])
+        llm_model.change(change_llm_model, inputs=[llm_model], outputs=[sft_dropdown])
 
         prompt_wav_select.change(
             fn=auto_asr,
