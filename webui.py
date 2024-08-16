@@ -17,7 +17,7 @@ import os
 import random
 import shutil
 import sys
-from pathlib import Path
+import time
 
 import ffmpeg
 import gradio as gr
@@ -27,6 +27,7 @@ import torch
 import torchaudio
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
+from gradio import processing_utils
 from gradio_log import Log
 
 from cosyvoice.cli.cosyvoice import CosyVoice
@@ -85,6 +86,22 @@ def speed_change(input_audio: np.ndarray, speed: float, sr: int):
     processed_audio = np.frombuffer(out, np.int16)
 
     return processed_audio
+
+
+def prepare_audio_download(seed, prompt_wav_select, audio_output):
+    path_name = (
+        prompt_wav_select
+        and prompt_wav_select.split("ttd_lib/")[-1].replace("/", "_")
+        or "0.wav"
+    )
+    tmp_file = f"/tmp/gradio/{time.time()}_{seed}_{path_name}"
+    processing_utils.audio_to_file(audio_output[0], audio_output[1], tmp_file)
+    return tmp_file
+
+
+def is_audio_downloadable(link):
+    if not link:
+        gr.Info("生成音频文件后才能下载")
 
 
 reference_wavs = ["请选择参考音频或者自己上传"]
@@ -435,11 +452,6 @@ def main():
                 label="选择预训练音色",
                 value=change_llm_model("")["choices"][0],
             )
-            with gr.Column():
-                seed_button = gr.Button(value="\U0001f3b2")
-                seed = gr.Number(value=0, label="随机推理种子(影响全局推理)")
-        gr.Markdown("### 三秒复刻区（Zero-Shot推理） - 参考音频Prompt选择")
-        with gr.Row():
             new_dropdown = gr.FileExplorer(
                 glob="**/*.pt",
                 ignore_glob="*._*",
@@ -448,6 +460,11 @@ def main():
                 interactive=True,
                 file_count="single",
             )
+            with gr.Column():
+                seed_button = gr.Button(value="\U0001f3b2")
+                seed = gr.Number(value=0, label="随机推理种子(影响全局推理)")
+        gr.Markdown("### 三秒复刻区（Zero-Shot推理） - 参考音频Prompt选择")
+        with gr.Row():
             prompt_wav_select = gr.FileExplorer(
                 glob="**/*.wav",
                 ignore_glob="*._*",
@@ -489,21 +506,20 @@ def main():
             placeholder="请输入instruct文本.",
             value="",
         )
-
-        new_name = gr.Textbox(
-            label="输入新的音色名称", lines=1, placeholder="输入新的音色名称.", value=""
-        )
-
-        save_button = gr.Button("保存刚刚推理的zero-shot音色")
+        with gr.Row():
+            new_name = gr.Textbox(
+                label="输入新的音色名称", lines=1, placeholder="输入新的音色名称.", value="", scale=80
+            )
+            save_button = gr.Button("保存刚刚推理的zero-shot音色", scale=20)
 
         save_button.click(save_name, inputs=[new_name])
 
         llm_model.change(change_llm_model, inputs=[llm_model], outputs=[sft_dropdown])
 
         prompt_wav_select.change(
-            fn=auto_asr,
+            fn=lambda x: x,
             inputs=[prompt_wav_select],
-            outputs=[prompt_wav_upload, prompt_text],
+            outputs=[prompt_wav_upload],
         )
         prompt_wav_upload.change(
             fn=auto_asr, inputs=[prompt_wav_upload], outputs=[prompt_text]
@@ -512,7 +528,10 @@ def main():
             fn=auto_asr, inputs=[prompt_wav_record], outputs=[prompt_text]
         )
 
-        generate_button = gr.Button("生成音频")
+        with gr.Row():
+            generate_button = gr.Button("生成音频", scale=80)
+            download_btn = gr.DownloadButton("下载", scale=20)
+
         generate_button_stream = gr.Button("流式生成", visible=False)
 
         # audio_output = gr.Audio(label="合成音频")
@@ -523,7 +542,7 @@ def main():
             autoplay=True,  # disable auto play for Windows, due to https://developer.chrome.com/blog/autoplay#webaudio
             interactive=False,
             show_label=True,
-            show_download_button=True,
+            show_download_button=False,
         )
 
         Log(
@@ -533,9 +552,18 @@ def main():
             render=bool(get_docker_logs()),
         )
 
+        audio_output.change(
+            prepare_audio_download,
+            inputs=[seed, prompt_wav_select, audio_output],
+            outputs=[download_btn],
+        )
+
+        download_btn.click(is_audio_downloadable, inputs=download_btn)
+
         # result2 = gr.Textbox(label="翻译结果(会在项目目录生成two.srt/two.srt is generated in the current directory)")
         # audio_output
         seed_button.click(generate_seed, inputs=[], outputs=seed)
+
         generate_button.click(
             generate_audio,
             inputs=[
