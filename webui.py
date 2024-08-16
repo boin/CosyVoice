@@ -157,10 +157,8 @@ def set_all_random_seed(seed):
     torch.cuda.manual_seed_all(seed)
 
 
-max_val = 0.8
-
-
 def postprocess(speech, top_db=60, hop_length=220, win_length=440):
+    max_val = 0.8
     speech, _ = librosa.effects.trim(
         speech, top_db=top_db, frame_length=win_length, hop_length=hop_length
     )
@@ -170,25 +168,37 @@ def postprocess(speech, top_db=60, hop_length=220, win_length=440):
     return speech
 
 
-def change_llm_model(llm_path="", model_dir=""):
-    """变更模型路径和地址
-    Args:
-        model_dir (_type_): 模型路径 默认 ./pretrained_modles/-300M
-        llm_dir (_type_): LLM PT路径 默认 {model_dir}/llm.pt
-    """
+def check_cosy_inst(llm_dir):
+    """根据选择不同的底模重初始化cosyvoice实例"""
     global cosyvoice
-    model_dir = model_dir if model_dir else args.model_dir
-    spkinfo_dir = f"{model_dir}/spk2info.pt"
-    spkinfo_path = ""
-    if llm_path:
-        spkinfo_path = Path(
+    cosy_llm_path = llm_dir or f"{cosy_pre_model_dir}/llm.pt"
+    cosy_spkinfo_path = (
+        llm_dir
+        and os.path.realpath(f"{os.path.dirname(llm_dir)}/../train/temp1/spk2info.pt")
+        or f"{cosy_pre_model_dir}/spk2info.pt"
+    )
+    if not cosyvoice or set(
+        [
+            cosyvoice.model_dir.replace("./.cache/modelscope/hub/", ""),
+            cosyvoice.llm_dir.replace("./.cache/modelscope/hub/", ""),
+        ]
+    ) != set([cosy_pre_model_dir, cosy_llm_path]):
+        cosyvoice = CosyVoice(cosy_pre_model_dir, cosy_llm_path, cosy_spkinfo_path)
+    return cosyvoice
+
+
+def change_llm_model(llm_path):
+    """从底模中抽取讲述人"""
+    spkinfo_path = f"./.cache/modelscope/hub/{cosy_pre_model_dir}/spk2info.pt"
+    if llm_path:  # 设置了自定义llm_path
+        # 对应的spkinfo_path也要ok
+        spkinfo_path = os.path.realpath(
             f"{os.path.dirname(llm_path)}/../train/temp1/spk2info.pt"
-        ).resolve()
-    else:
-        llm_path = f"{model_dir}/llm.pt"
-    spkinfo_dir = spkinfo_path if os.path.exists(spkinfo_path) else spkinfo_dir
-    cosyvoice = CosyVoice(model_dir, llm_path, spkinfo_dir)
-    return {"choices": cosyvoice.list_avaliable_spks(), "__type__": "update"}
+        )
+    return {
+        "choices": list(torch.load(spkinfo_path, map_location="cpu").keys()),
+        "__type__": "update",
+    }
 
 
 inference_mode_list = ["预训练音色", "3s极速复刻", "跨语种复刻", "自然语言控制"]
@@ -216,7 +226,9 @@ def generate_audio(
     speed_factor,
     new_dropdown,
     prompt_wav_select,
+    llm_model,
 ):
+    cosyvoice = check_cosy_inst(llm_model)
     if prompt_wav_select is not None:
         prompt_wav = prompt_wav_select
     elif prompt_wav_upload is not None:
@@ -419,7 +431,9 @@ def main():
                 file_count="single",
             )
             sft_dropdown = gr.Dropdown(
-                choices=sft_spk, label="选择预训练音色", value=sft_spk[0]
+                choices=change_llm_model("")["choices"],
+                label="选择预训练音色",
+                value=change_llm_model("")["choices"][0],
             )
             with gr.Column():
                 seed_button = gr.Button(value="\U0001f3b2")
@@ -453,7 +467,7 @@ def main():
         tts_text = gr.Textbox(
             label="输入合成文本",
             lines=1,
-            value="我是通义实验室语音团队全新推出的生成式语音大模型，提供舒适自然的语音合成能力。",
+            value="你吃饭了吗？",
         )
         speed_factor = gr.Slider(
             minimum=0.25,
@@ -499,7 +513,7 @@ def main():
         )
 
         generate_button = gr.Button("生成音频")
-        generate_button_stream = gr.Button("流式生成")
+        generate_button_stream = gr.Button("流式生成", visible=False)
 
         # audio_output = gr.Audio(label="合成音频")
         audio_output = gr.Audio(
@@ -536,6 +550,7 @@ def main():
                 speed_factor,
                 new_dropdown,
                 prompt_wav_select,
+                llm_model,
             ],
             outputs=[audio_output],
         )
@@ -576,8 +591,8 @@ if __name__ == "__main__":
         help="local path or modelscope repo id",
     )
     args = parser.parse_args()
-    cosyvoice = CosyVoice(args.model_dir)
-    sft_spk = cosyvoice.list_avaliable_spks()
+    cosy_pre_model_dir = args.model_dir
     prompt_sr, target_sr = 16000, 22050
     default_data = np.zeros(target_sr)
+    cosyvoice = None
     main()

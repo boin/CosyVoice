@@ -41,15 +41,12 @@ def time_it(func):
 
 class CosyVoice:
     def __init__(self, model_dir, llm_dir='', spk2info_dir=''):
-        print(model_dir, llm_dir, spk2info_dir)
+        print('CosyVoice init called with model_dir "{}" , llm_dir "{}" , spk2info_dir "{}"'.format(model_dir, llm_dir, spk2info_dir))
         instruct = True if "-Instruct" in model_dir else False
         self.model_dir = model_dir
-        if not os.path.exists(model_dir):
-            model_dir = snapshot_download(model_dir)
-        if not os.path.exists(llm_dir):
-            llm_dir = "{}/llm.pt".format(model_dir)
-        if not os.path.exists(spk2info_dir):
-            spk2info_dir = "{}/spk2info.pt".format(model_dir)
+        model_dir = model_dir if os.path.exists(model_dir) else snapshot_download(model_dir)
+        self.llm_dir = llm_dir if os.path.exists(llm_dir) else "{}/llm.pt".format(model_dir)
+        self.spk2info_dir =spk2info_dir if os.path.exists(spk2info_dir) else "{}/spk2info.pt".format(model_dir)
         with open("{}/cosyvoice.yaml".format(model_dir), "r") as f:
             configs = load_hyperpyyaml(f)
         self.frontend = CosyVoiceFrontEnd(
@@ -57,17 +54,18 @@ class CosyVoice:
             configs["feat_extractor"],
             "{}/campplus.onnx".format(model_dir),
             "{}/speech_tokenizer_v1.onnx".format(model_dir),
-            spk2info_dir,
+            self.spk2info_dir,
             instruct,
             configs["allowed_special"],
         )
         self.model = CosyVoiceModel(configs["llm"], configs["flow"], configs["hift"])
         self.model.load(
-            llm_dir,
+            self.llm_dir,
             "{}/flow.pt".format(model_dir),
             "{}/hift.pt".format(model_dir),
         )
         del configs
+        print('CosyVoice loaded with model_dir "{}" , llm_dir "{}" , spk2info_dir "{}" '.format(self.model_dir, self.llm_dir, self.spk2info_dir))
 
     def list_avaliable_spks(self):
         # print(self.frontend.spk2info)
