@@ -47,7 +47,7 @@ class CosyVoice:
         model_dir = model_dir if os.path.exists(model_dir) else snapshot_download(model_dir)
         self.llm_dir = llm_dir if os.path.exists(llm_dir) else "{}/llm.pt".format(model_dir)
         self.spk2info_dir =spk2info_dir if os.path.exists(spk2info_dir) else "{}/spk2info.pt".format(model_dir)
-        with open("{}/cosyvoice.yaml".format(model_dir), "r") as f:
+        with open("conf/cosyvoice.yaml", "r") as f:
             configs = load_hyperpyyaml(f)
         self.frontend = CosyVoiceFrontEnd(
             configs["get_tokenizer"],
