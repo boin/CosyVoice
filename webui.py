@@ -48,8 +48,7 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(mes
 
 asr_model = AutoModel(
     model="iic/SenseVoiceSmall",
-    vad_model="fsmn-vad",
-    vad_kwargs={"max_single_segment_time": 30000},
+    trust_remote_code=True,
     device="cuda:0",
     disable_update=True,
 )
@@ -155,9 +154,8 @@ def auto_asr(audio_path):
         cache={},
         language="auto",  # "zn", "en", "yue", "ja", "ko", "nospeech"
         use_itn=True,
-        batch_size_s=60,
-        merge_vad=True,
-        merge_length_s=15,
+        batch_size=64,
+        ban_emo_unk=True,
     )
     return rich_transcription_postprocess(res[0]["text"]).replace(" ", "")
 
