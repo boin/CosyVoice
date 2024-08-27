@@ -1,0 +1,43 @@
+import requests
+import sys
+
+
+def asr_model(audio_data, host="ttd-server:8300"):
+    """
+    curl -X 'POST' \
+     'http://ttd-server:8300/api/v1/asr' \
+      -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'files=@李弘彬_疑惑_0.wav;type=audio/wav' \
+  -F 'keys=1' \
+  -F 'lang=auto'
+    """
+    headers = {"Content-Type": "multipart/form-data", "accept": "application/json"}
+
+    data = {"keys": "wav", "lang": "auto"}
+
+    #     {
+    #   "result": [
+    #     {
+    #       "key": "1",
+    #       "text": "你真的不行😔",
+    #       "raw_text": "<|zh|><|SAD|><|Speech|><|woitn|>你真的不行",
+    #       "clean_text": "你真的不行"
+    #     }
+    #   ]
+    # }
+
+    response = requests.post(
+        f"http://{host}/api/v1/asr",
+        files={"files": audio_data},
+        data=data,
+        headers=headers,
+    )
+    return response.content
+
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    audio_data = open(args[0], "rb")
+    res = asr_model(audio_data, "192.168.100.16:8300")
+    print(res)

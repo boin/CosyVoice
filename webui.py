@@ -25,8 +25,7 @@ import librosa
 import numpy as np
 import torch
 import torchaudio
-from funasr import AutoModel
-from funasr.utils.postprocess_utils import rich_transcription_postprocess
+from tools.funasr import asr_model
 from gradio import processing_utils
 from gradio_log import Log
 
@@ -45,13 +44,6 @@ sys.path.append("{}/third_party/Matcha-TTS".format(ROOT_DIR))
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
-
-asr_model = AutoModel(
-    model="iic/SenseVoiceSmall",
-    trust_remote_code=True,
-    device="cuda:0",
-    disable_update=True,
-)
 
 
 def get_docker_logs():
@@ -149,15 +141,8 @@ def save_name(name):
 
 
 def auto_asr(audio_path):
-    res = asr_model.generate(
-        input=audio_path,
-        cache={},
-        language="auto",  # "zn", "en", "yue", "ja", "ko", "nospeech"
-        use_itn=True,
-        batch_size=64,
-        ban_emo_unk=True,
-    )
-    return rich_transcription_postprocess(res[0]["text"]).replace(" ", "")
+    res = asr_model(audio_path)
+    return res["clean_text"]
 
 
 def generate_seed():
