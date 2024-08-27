@@ -142,7 +142,7 @@ def save_name(name):
 
 def auto_asr(audio_path):
     res = asr_model(audio_path)
-    return res["clean_text"]
+    return res['result'][0]["clean_text"]
 
 
 def generate_seed():

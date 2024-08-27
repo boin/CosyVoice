@@ -12,8 +12,7 @@ def asr_model(audio_data, host="ttd-server:8300"):
   -F 'keys=1' \
   -F 'lang=auto'
     """
-    headers = {"Content-Type": "multipart/form-data", "accept": "application/json"}
-
+    headers = {"accept": "application/json"}
     data = {"keys": "wav", "lang": "auto"}
 
     #     {
@@ -33,11 +32,11 @@ def asr_model(audio_data, host="ttd-server:8300"):
         data=data,
         headers=headers,
     )
-    return response.content
+    return response.json()
 
 
 if __name__ == "__main__":
     args = sys.argv[1:]
     audio_data = open(args[0], "rb")
     res = asr_model(audio_data, "192.168.100.16:8300")
-    print(res)
+    print(res['result'][0])
