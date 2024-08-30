@@ -141,7 +141,7 @@ def save_name(name):
 
 
 def auto_asr(audio_path):
-    res = asr_model(audio_path)
+    res = asr_model(open(audio_path, "rb"))
     return res['result'][0]["clean_text"]
 
 
