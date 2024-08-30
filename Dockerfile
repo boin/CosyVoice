@@ -1,12 +1,13 @@
 FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel
 ENV DEBIAN_FRONTEND=noninteractive
 
-WORKDIR /opt/CosyVoice
-COPY . /opt/CosyVoice
-
 RUN apt-get update -y
 RUN apt-get -y install git curl ffmpeg wget vim locales apt-utils libaio-dev
 RUN locale-gen en_US en_US.UTF-8
+
+WORKDIR /opt/CosyVoice
+COPY . /opt/CosyVoice
+
 RUN pip3 install --no-cache-dir -r requirements.txt
 RUN pip3 install -U numpy==1.26.4
 RUN mkdir -p logs
