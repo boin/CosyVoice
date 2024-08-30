@@ -1,13 +1,12 @@
 FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update -y
-RUN apt-get -y install git curl ffmpeg wget vim locales apt-utils libaio-dev
+RUN apt-get update -y && apt-get -y install git curl ffmpeg wget vim locales apt-utils libaio-dev
 RUN locale-gen en_US en_US.UTF-8
 
 #mount requirements.txt for best cache result
 RUN --mount=type=bind,source=requirements.txt,target=/tmp/requirements.txt \
-    pip3 install --no-cache-dir -r requirements.txt
+    pip3 install --no-cache-dir -r /tmp/requirements.txt
 RUN pip3 install -U numpy==1.26.4
 
 COPY . /opt/CosyVoice
