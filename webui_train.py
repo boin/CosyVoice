@@ -225,11 +225,15 @@ def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text,
     hifigan_model = os.path.join(pre_model_path, "hift.pt")
     res_dir = Path(output_path) / "outputs"
     res_dir.mkdir(exist_ok=True, parents=True)
+    voice = voice.split(" - ")[1] # spkr1 - voice1 => voice1
+    if not voice: 
+        raise 'empty voice.'
 
     json_path = str(Path(res_dir) / "tts_text.json")
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
 
+    print(f'call cosy/bin/infer {mode} => {voice} says: {text} with r_seed {seed}')
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
     cmd = [
             r"python3",
