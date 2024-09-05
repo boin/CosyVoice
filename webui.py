@@ -116,6 +116,8 @@ def refresh_choices():
     return {"choices": spk_new, "__type__": "update"}
 
 
+
+
 def change_choices():
     reference_wavs = ["选择参考音频,或者自己上传"]
 
@@ -213,25 +215,8 @@ instruct_dict = {
 def change_instruction(mode_checkbox_group):
     return instruct_dict[mode_checkbox_group]
 
-
-def generate_audio(
-    tts_text,
-    mode_checkbox_group,
-    sft_dropdown,
-    prompt_text,
-    prompt_wav_upload,
-    prompt_wav_record,
-    instruct_text,
-    seed,
-    speed_factor,
-    new_dropdown,
-    prompt_wav_select,
-    llm_model,
-):
-    cosyvoice = check_cosy_inst(llm_model)
-    if prompt_wav_select is not None:
-        prompt_wav = prompt_wav_select
-    elif prompt_wav_upload is not None:
+def generate_audio(tts_text, mode_checkbox_group, sft_dropdown, prompt_text, prompt_wav_upload, prompt_wav_record, instruct_text, seed,speed_factor,new_dropdown):
+    if prompt_wav_upload is not None:
         prompt_wav = prompt_wav_upload
     elif prompt_wav_record is not None:
         prompt_wav = prompt_wav_record
@@ -295,9 +280,9 @@ def generate_audio(
     if mode_checkbox_group == "预训练音色":
         logging.info("get sft inference request")
         set_all_random_seed(seed)
-        output = cosyvoice.inference_sft(tts_text, sft_dropdown, new_dropdown)
-    elif mode_checkbox_group == "3s极速复刻":
-        logging.info("get zero_shot inference request")
+        output = cosyvoice.inference_sft(tts_text,sft_dropdown,new_dropdown)
+    elif mode_checkbox_group == '3s极速复刻':
+        logging.info('get zero_shot inference request')
         prompt_speech_16k = postprocess(load_wav(prompt_wav, prompt_sr))
         set_all_random_seed(seed)
         output = cosyvoice.inference_zero_shot(tts_text, prompt_text, prompt_speech_16k)
@@ -408,87 +393,21 @@ def main():
             "### 代码库 [CosyVoice](https://github.com/FunAudioLLM/CosyVoice) 预训练模型 [CosyVoice-300M](https://www.modelscope.cn/models/speech_tts/CosyVoice-300M) [CosyVoice-300M-Instruct](https://www.modelscope.cn/models/speech_tts/CosyVoice-300M-Instruct) [CosyVoice-300M-SFT](https://www.modelscope.cn/models/speech_tts/CosyVoice-300M-SFT)"
         )
         gr.Markdown("#### 请输入需要合成的文本，选择推理模式，并按照提示步骤进行操作")
-        with gr.Row():
-            mode_checkbox_group = gr.Radio(
-                choices=inference_mode_list,
-                label="选择推理模式",
-                value=inference_mode_list[0],
-            )
-            instruction_text = gr.Text(
-                label="操作步骤", value=instruct_dict[inference_mode_list[0]]
-            )
 
-        gr.Markdown(
-            "### 预训练音色区（SFT推理） - 选择自定义底模中的讲述人（spk） 注意自定义底模也会影响3秒复刻"
-        )
+        tts_text = gr.Textbox(label="输入合成文本", lines=1, value="我是通义实验室语音团队全新推出的生成式语音大模型，提供舒适自然的语音合成能力。")
+        speed_factor = gr.Slider(minimum=0.25,maximum=4,step=0.05,label="语速调节",value=1.0,interactive=True)
+
         with gr.Row():
-            llm_model = gr.FileExplorer(
-                glob="**/*.pt",
-                ignore_glob="*._*",
-                root_dir="./data",
-                label="选择llm底模，不选为默认",
-                interactive=True,
-                file_count="single",
-            )
-            sft_dropdown = gr.Dropdown(
-                choices=change_llm_model("")["choices"],
-                label="选择预训练音色",
-                value=change_llm_model("")["choices"][0],
-            )
-            new_dropdown = gr.FileExplorer(
-                glob="**/*.pt",
-                ignore_glob="*._*",
-                root_dir="./voices/",
-                label="选择自定义音色",
-                interactive=True,
-                file_count="single",
-            )
-            with gr.Column():
-                seed_button = gr.Button(value="\U0001f3b2")
-                seed = gr.Number(value=0, label="随机推理种子(影响全局推理)")
-        gr.Markdown("### 三秒复刻区（Zero-Shot推理） - 参考音频Prompt选择")
-        with gr.Row():
-            prompt_wav_select = gr.FileExplorer(
-                glob="**/*.wav",
-                ignore_glob="*._*",
-                root_dir="./ttd_lib/",
-                label="从音色库选择prompt",
-                interactive=True,
-                file_count="single",
-            )
-            prompt_wav_upload = gr.Audio(
-                sources="upload",
-                type="filepath",
-                label="上传prompt，采样率≥16khz",
-            )
-            prompt_wav_record = gr.Audio(
-                sources="microphone", type="filepath", label="录制prompt"
-            )
-        tts_text = gr.Textbox(
-            label="输入合成文本",
-            lines=1,
-            value="你吃饭了吗？",
-        )
-        speed_factor = gr.Slider(
-            minimum=0.25,
-            maximum=4,
-            step=0.05,
-            label="语速调节",
-            value=1.0,
-            interactive=True,
-        )
-        prompt_text = gr.Textbox(
-            label="输入prompt文本",
-            lines=1,
-            placeholder="请输入prompt文本，需与prompt音频内容一致，暂时不支持自动识别...",
-            value="",
-        )
-        instruct_text = gr.Textbox(
-            label="输入instruct文本",
-            lines=1,
-            placeholder="请输入instruct文本.",
-            value="",
-        )
+            mode_checkbox_group = gr.Radio(choices=inference_mode_list, label='选择推理模式', value=inference_mode_list[0])
+            instruction_text = gr.Text(label="操作步骤", value=instruct_dict[inference_mode_list[0]], scale=0.5)
+            sft_dropdown = gr.Dropdown(choices=sft_spk, label='选择预训练音色', value=sft_spk[0], scale=0.25)
+            new_dropdown = gr.Dropdown(choices=spk_new, label='选择新增音色', value=spk_new[0],interactive=True)
+            refresh_new_button = gr.Button("刷新新增音色")
+            refresh_new_button.click(fn=refresh_choices, inputs=[], outputs=[new_dropdown])
+            with gr.Column(scale=0.25):
+                seed_button = gr.Button(value="\U0001F3B2")
+                seed = gr.Number(value=0, label="随机推理种子")
+
         with gr.Row():
             new_name = gr.Textbox(
                 label="输入新的音色名称", lines=1, placeholder="输入新的音色名称.", value="", scale=80
@@ -522,7 +441,7 @@ def main():
             label="合成音频",
             value=None,
             streaming=True,
-            autoplay=True,  # disable auto play for Windows, due to https://developer.chrome.com/blog/autoplay#webaudio
+            # autoplay=True,  # disable auto play for Windows, due to https://developer.chrome.com/blog/autoplay#webaudio
             interactive=False,
             show_label=True,
             show_download_button=False,
