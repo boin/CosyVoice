@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import subprocess
 from pathlib import Path
 
@@ -22,6 +23,31 @@ def get_docker_logs():
     log_path = base_path
     return log_path
 
+'''
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+'''
+def generate_seed():
+    seed = random.randint(1, 100000000)
+    return {"__type__": "update", "value": seed}
+
+def refresh_voice(project_input_dir, output_path):
+    content = (
+        data_path(output_path, project_input_dir) / "train" / "temp1" / "utt2spk"
+    ).read_text()
+    voices = []
+    for item in content.split("\n"):
+        if (item): 
+            [ voice, spkr ] = item.split(" ")
+            voices.append(f'{spkr} - {voice}')
+    return gr.Dropdown(choices=voices)
+
+def load_refrence_wav(refrence_name, project_input_dir):
+    [spkr, voice] = refrence_name.split(" - ")
+    path = data_path(f'{spkr}/train', project_input_dir) / f"{voice}.wav"
+    return os.path.realpath(path)
 
 def preprocess(
     project_input_dir, train_input_path, val_input_path, output_path, pre_model_path
@@ -127,16 +153,6 @@ def preprocess(
     return log("预处理全部完成，可以开始训练")
 
 
-def refresh_voice(project_input_dir, output_path):
-    content = (
-        data_path(output_path, project_input_dir) / "train" / "temp1" / "utt2spk"
-    ).read_text()
-    voices = []
-    for item in content.split("\n"):
-        voices.append(item.split(" ")[0])
-    return gr.Dropdown(choices=voices)
-
-
 def train(project_input_dir, output_path, pre_model_path, thread_num, max_epoch):
     output_path = data_path(output_path, project_input_dir)
     train_list = os.path.join(output_path, "train", "temp2", "data.list")
@@ -200,14 +216,13 @@ def train(project_input_dir, output_path, pre_model_path, thread_num, max_epoch)
         return log(f"训练出错啦 {out}")
 
 
-def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text, voice):
+def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text, voice, seed):
     output_path = data_path(output_path, project_input_dir)
     train_list = os.path.join(output_path, "train", "temp2", "data.list")
     utt2data_list = Path(train_list).with_name("utt2data.list")
     llm_model = os.path.join(output_path, "models", f"epoch_{epoch}_whole.pt")
     flow_model = os.path.join(pre_model_path, "flow.pt")
     hifigan_model = os.path.join(pre_model_path, "hift.pt")
-
     res_dir = Path(output_path) / "outputs"
     res_dir.mkdir(exist_ok=True, parents=True)
 
@@ -216,8 +231,7 @@ def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text,
         json.dump({voice: [text]}, f)
 
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
-    subprocess.run(
-        [
+    cmd = [
             r"python3",
             "cosyvoice/bin/inference.py",
             "--mode",
@@ -240,8 +254,9 @@ def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text,
             hifigan_model,
             "--result_dir",
             str(res_dir),
+            "--rseed", str(seed)
         ]
-    )
+    subprocess.run(cmd)
     output_path = str(Path(res_dir) / f"{voice}_0.wav")
     return output_path
 
@@ -322,29 +337,39 @@ with gr.Blocks() as demo:
         status = gr.Text(label="状态")
     with gr.Tab("推理"):
         with gr.Row():
-            voices = gr.Dropdown(
-                label="音色列表",
-                info="根据训练集的数据，在上一步预处理中生成，点右侧刷新",
-            )
-            refresh = gr.Button("刷新音色列表", variant="primary")
+            with gr.Column():
+                refresh = gr.Button("刷新音色列表", variant="primary", scale=2)
+                voices = gr.Dropdown(
+                    label="音色列表",
+                    info="根据训练集的数据，在预处理中生成，点右侧刷新",
+                    scale=2
+                )
+            preview = gr.Audio(label="参考音预览", show_download_button=False, show_share_button=False, sources=[], scale=4)
             mode = gr.Dropdown(
                 choices=["sft", "zero_shot"],
                 label="推理模式",
-                value="sft",
-                info="SFT模型（SFT）和3秒复刻模型（zero-shot）可选，都试试",
+                value="zero_shot",
+                info="SFT模型（SFT）和3秒复刻模型（zero-shot）",
+                scale=1
             )
             epoch = gr.Number(
                 interactive=True,
                 precision=0,
                 label="模型轮次ID",
                 info="使用模型输出文件夹中训练第？轮次的模型",
+                scale=1
             )
+            with gr.Column():
+                seed = gr.Number(value=0, label="随机推理种子(影响全局推理)") 
+                seed_button = gr.Button(value="\U0001f3b2")
         text = gr.Text(label="输入文字")
         inference_btn = gr.Button("开始推理", variant="primary")
-        out_audio = gr.Audio()
+        out_audio = gr.Audio(label="音频输出")
     Log(
         get_docker_logs(), dark=True, xterm_font_size=12, render=bool(get_docker_logs())
     )
+    voices.change(load_refrence_wav, inputs=[ voices, project_input_dir ], outputs=preview)
+    seed_button.click(generate_seed, inputs=[], outputs=seed)
 
     preprocess_btn.click(
         preprocess,
@@ -378,10 +403,11 @@ with gr.Blocks() as demo:
             pretrained_model_path,
             text,
             voices,
+            seed
         ],
         outputs=out_audio,
     )
     refresh.click(refresh_voice, inputs=[project_input_dir, output_dir], outputs=voices)
     stop_btn.click(stop_training, outputs=[status])
 
-demo.launch(server_name="0.0.0.0", server_port=9883, inbrowser=True)
+demo.launch(server_name="0.0.0.0", server_port=9883, inbrowser=False)

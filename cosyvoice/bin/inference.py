@@ -17,6 +17,7 @@ from __future__ import print_function
 import argparse
 import logging
 import os
+import random
 
 import torch
 import torchaudio
@@ -46,6 +47,7 @@ def get_args():
         "--mode", default="sft", choices=["sft", "zero_shot"], help="inference mode"
     )
     parser.add_argument("--result_dir", required=True, help="asr result file")
+    parser.add_argument("--rseed", required=False, help="setup a ramdon seed")
     args = parser.parse_args()
     print(args)
     return args
@@ -66,6 +68,13 @@ def main():
     result_dir='data/LHB_0.5MIN_ID30/output/outputs'                         # 输出地址
     """
     args = get_args()
+
+    seed = args.rseed
+    if seed:
+        random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+
     logging.basicConfig(
         level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s"
     )
