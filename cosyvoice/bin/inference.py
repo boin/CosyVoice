@@ -109,6 +109,7 @@ def main():
     os.makedirs(args.result_dir, exist_ok=True)
     fn = os.path.join(args.result_dir, "wav.scp")
     f = open(fn, "w")
+    tts_key = ""
     # 初始化torch
     with torch.no_grad():
         # 以 测试数据集中的每一行数据作为循环（实际上推理的时候只循环一次，因为只有一行数据）
@@ -161,27 +162,22 @@ def main():
                 }
             # 这就是开始干活了…
             model_output = model.inference(**model_input)
+            #normalize
+            out_audio, sr = librosa.load(model_output["tts_speech"])
+            rms = librosa.feature.rms(y=out_audio)
+            mean_rms = np.mean(rms)
+            target_volume = 0.95
+            # 计算音频的增益因子
+            gain = target_volume / mean_rms
+            # 应用增益因子调整音频的音量
+            out_audio = out_audio * gain
             # 以下是把数据存成音频文件（wav.scp），不重要了。
             tts_key = "{}_{}".format(utts[0], tts_index[0])
             tts_fn = os.path.join(args.result_dir, "{}.wav".format(tts_key))
-            torchaudio.save(tts_fn, model_output["tts_speech"], sample_rate=22050)
+            torchaudio.save(tts_fn, out_audio, sample_rate=22050)
             f.write("{} {}\n".format(tts_key, tts_fn))
             f.flush()
     f.close()
-    #do normalize
-    audio, sr = librosa.load(fn)
-    # 计算音频的RMS能量
-    rms = librosa.feature.rms(y=audio)
-    # 计算音频的平均RMS值
-    mean_rms = np.mean(rms)
-    # 设置目标音量水平（例如：0表示静音，1表示最大音量）
-    target_volume = 0.95
-    # 计算音频的增益因子
-    gain = target_volume / mean_rms
-    # 应用增益因子调整音频的音量
-    normalized_audio = audio * gain
-    # 输出调整后的音频
-    librosa.output.write_wav(fn, normalized_audio, sr)
     logging.info("Result wav.scp saved in {}".format(fn))
 
 
