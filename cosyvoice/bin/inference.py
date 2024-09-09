@@ -18,9 +18,8 @@ import argparse
 import logging
 import os
 import random
-import librosa
+import pyloudnorm as pyln
 import soundfile as sf
-import numpy as np
 
 import torch
 import torchaudio
@@ -170,18 +169,12 @@ def main():
             tts_fn = os.path.join(args.result_dir, "{}.wav".format(tts_key))
             torchaudio.save(tts_fn, out_audio, sample_rate=22050)
             #normalize
-            #raw_wav = './data/test/output/outputs/1569_original.wav'
-            audio, sr = librosa.load(tts_fn)
-            #rms = librosa.feature.rms(y=audio)
-            #mean_rms = np.mean(rms)
-            max_peak = np.max(np.abs(audio))
-            target_volume = 0.6
-            # 计算音频的增益因子
-            #gain = target_volume / mean_rms
-            gain = 1 / max_peak * target_volume
-            # 应用增益因子调整音频的音量
-            out_audio = audio * gain
-            #out_audio = librosa.mu_compress(audio, quantize=True)
+            data, sr = sf.read(tts_fn) # load audio
+            # measure the loudness first
+            meter = pyln.Meter(sr) # create BS.1770 meter
+            loudness = meter.integrated_loudness(data)
+            # loudness normalize audio to -25 dB LUFS
+            out_audio = pyln.normalize.loudness(data, loudness, -25.0)
             sf.write(tts_fn, out_audio, sr)
             f.write("{} {}\n".format(tts_key, tts_fn))
             f.flush()
