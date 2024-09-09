@@ -18,6 +18,8 @@ import argparse
 import logging
 import os
 import random
+import librosa
+import numpy as np
 
 import torch
 import torchaudio
@@ -166,6 +168,20 @@ def main():
             f.write("{} {}\n".format(tts_key, tts_fn))
             f.flush()
     f.close()
+    #do normalize
+    audio, sr = librosa.load(fn)
+    # 计算音频的RMS能量
+    rms = librosa.feature.rms(y=audio)
+    # 计算音频的平均RMS值
+    mean_rms = np.mean(rms)
+    # 设置目标音量水平（例如：0表示静音，1表示最大音量）
+    target_volume = 0.95
+    # 计算音频的增益因子
+    gain = target_volume / mean_rms
+    # 应用增益因子调整音频的音量
+    normalized_audio = audio * gain
+    # 输出调整后的音频
+    librosa.output.write_wav(fn, normalized_audio, sr)
     logging.info("Result wav.scp saved in {}".format(fn))
 
 
