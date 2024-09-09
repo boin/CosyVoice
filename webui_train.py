@@ -45,9 +45,24 @@ def refresh_voice(project_input_dir, output_path):
     return gr.Dropdown(choices=voices)
 
 def load_refrence_wav(refrence_name, project_input_dir):
+    if not project_input_dir: return 
+    root_dir = project_input_dir.endswith('.pt') and os.path.basename(os.path.realpath(f'{project_input_dir}/../../../')) or project_input_dir
     [spkr, voice] = refrence_name.split(" - ")
-    path = data_path(f'{spkr}/train', project_input_dir) / f"{voice}.wav"
+    path = data_path(f'{spkr}/train', root_dir) / f"{voice}.wav"
+    print(path)
     return os.path.realpath(path)
+
+def load_mix_ref(pt_dir):
+    if not pt_dir: return ""
+    content = (
+        Path(f'{os.path.dirname(pt_dir)}/../train/temp1/utt2spk')
+    ).read_text() or ""
+    voices = []
+    for item in content.split("\n"):
+        if (item): 
+            [ voice, spkr ] = item.split(" ")
+            voices.append(f'{spkr} - {voice}')
+    return gr.Dropdown(choices=voices)
 
 def preprocess(
     project_input_dir, train_input_path, val_input_path, output_path, pre_model_path
@@ -216,7 +231,7 @@ def train(project_input_dir, output_path, pre_model_path, thread_num, max_epoch)
         return log(f"训练出错啦 {out}")
 
 
-def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text, voice, seed):
+def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text, voice, seed, spk_mix, mix_file):
     output_path = data_path(output_path, project_input_dir)
     train_list = os.path.join(output_path, "train", "temp2", "data.list")
     utt2data_list = Path(train_list).with_name("utt2data.list")
@@ -228,6 +243,9 @@ def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text,
     voice = voice.split(" - ")[1] # spkr1 - voice1 => voice1
     if not voice: 
         raise 'empty voice.'
+    spk_mix = spk_mix.split(" - ")[1]
+    if spk_mix:
+        
 
     json_path = str(Path(res_dir) / "tts_text.json")
     with open(json_path, "wt", encoding="utf-8") as f:
@@ -341,14 +359,6 @@ with gr.Blocks() as demo:
         status = gr.Text(label="状态")
     with gr.Tab("推理"):
         with gr.Row():
-            with gr.Column():
-                refresh = gr.Button("刷新音色列表", variant="primary", scale=2)
-                voices = gr.Dropdown(
-                    label="音色列表",
-                    info="根据训练集的数据，在预处理中生成，点右侧刷新",
-                    scale=2
-                )
-            preview = gr.Audio(label="参考音预览", show_download_button=False, show_share_button=False, sources=[], scale=4)
             mode = gr.Dropdown(
                 choices=["sft", "zero_shot"],
                 label="推理模式",
@@ -366,6 +376,29 @@ with gr.Blocks() as demo:
             with gr.Column():
                 seed = gr.Number(value=0, label="随机推理种子(影响全局推理)") 
                 seed_button = gr.Button(value="\U0001f3b2")
+        with gr.Row():
+            with gr.Column(scale=2):
+                refresh = gr.Button("刷新音色列表", variant="primary")
+                voices = gr.Dropdown(
+                    label="首选音色列表",
+                    info="根据训练集的数据，在预处理中生成，点右侧刷新"
+                )
+            preview = gr.Audio(label="首选参考音预览", show_download_button=False, show_share_button=False, sources=[], scale=2)
+            with gr.Column(scale=2):
+                mix_file=gr.FileExplorer(
+                    label="加载融合音色底模",
+                    file_count="single",
+                    root_dir="./data",
+                    glob="*/*.pt"
+                )
+                spk_mix = gr.Dropdown(
+                    label='选择融合音色',
+                    info="如果需要融合某个音色，可以在这里选择",
+                )
+            preview2 = gr.Audio(label="融合参考音预览", show_download_button=False, show_share_button=False, sources=[], scale=2)   
+        with gr.Row():
+            w1 = gr.Number(value=0.5, label="首选音色权重", interactive=True)
+            w2 = gr.Number(value=0.5, label="融合音色权重", interactive=True)
         text = gr.Text(label="输入文字")
         inference_btn = gr.Button("开始推理", variant="primary")
         out_audio = gr.Audio(label="音频输出")
@@ -373,7 +406,10 @@ with gr.Blocks() as demo:
         get_docker_logs(), dark=True, xterm_font_size=12, render=bool(get_docker_logs())
     )
     voices.change(load_refrence_wav, inputs=[ voices, project_input_dir ], outputs=preview)
+    spk_mix.change(load_refrence_wav, inputs=[ spk_mix, mix_file ], outputs=preview2)
+
     seed_button.click(generate_seed, inputs=[], outputs=seed)
+    mix_file.change(load_mix_ref, inputs=[mix_file], outputs=[spk_mix])
 
     preprocess_btn.click(
         preprocess,
@@ -407,7 +443,9 @@ with gr.Blocks() as demo:
             pretrained_model_path,
             text,
             voices,
-            seed
+            seed,
+            spk_mix,
+            mix_file
         ],
         outputs=out_audio,
     )

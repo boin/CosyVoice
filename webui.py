@@ -390,7 +390,6 @@ def main():
         gr.Markdown(
             "### 代码库 [CosyVoice](https://github.com/FunAudioLLM/CosyVoice) 预训练模型 [CosyVoice-300M](https://www.modelscope.cn/models/speech_tts/CosyVoice-300M) [CosyVoice-300M-Instruct](https://www.modelscope.cn/models/speech_tts/CosyVoice-300M-Instruct) [CosyVoice-300M-SFT](https://www.modelscope.cn/models/speech_tts/CosyVoice-300M-SFT)"
         )
-        gr.Markdown("#### 请输入需要合成的文本，选择推理模式，并按照提示步骤进行操作")
         token_max_n = gr.Number(value=30,interactive=True,label="切分单句最大token数")
         token_min_n = gr.Number(value=20,interactive=True,label="切分单句最小token数")
         merge_len = gr.Number(value=15,label="低于多少token就和前句合并",interactive=True)
