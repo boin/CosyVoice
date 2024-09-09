@@ -19,6 +19,7 @@ import logging
 import os
 import random
 import librosa
+import soundfile as sf
 import numpy as np
 
 import torch
@@ -162,19 +163,26 @@ def main():
                 }
             # 这就是开始干活了…
             model_output = model.inference(**model_input)
-            #normalize
-            out_audio, sr = librosa.load(model_output["tts_speech"])
-            rms = librosa.feature.rms(y=out_audio)
-            mean_rms = np.mean(rms)
-            target_volume = 0.95
-            # 计算音频的增益因子
-            gain = target_volume / mean_rms
-            # 应用增益因子调整音频的音量
-            out_audio = out_audio * gain
+            #testing
+            out_audio = model_output["tts_speech"]
             # 以下是把数据存成音频文件（wav.scp），不重要了。
             tts_key = "{}_{}".format(utts[0], tts_index[0])
             tts_fn = os.path.join(args.result_dir, "{}.wav".format(tts_key))
             torchaudio.save(tts_fn, out_audio, sample_rate=22050)
+            #normalize
+            #raw_wav = './data/test/output/outputs/1569_original.wav'
+            audio, sr = librosa.load(tts_fn)
+            #rms = librosa.feature.rms(y=audio)
+            #mean_rms = np.mean(rms)
+            max_peak = np.max(np.abs(audio))
+            target_volume = 0.6
+            # 计算音频的增益因子
+            #gain = target_volume / mean_rms
+            gain = 1 / max_peak * target_volume
+            # 应用增益因子调整音频的音量
+            out_audio = audio * gain
+            #out_audio = librosa.mu_compress(audio, quantize=True)
+            sf.write(tts_fn, out_audio, sr)
             f.write("{} {}\n".format(tts_key, tts_fn))
             f.flush()
     f.close()
