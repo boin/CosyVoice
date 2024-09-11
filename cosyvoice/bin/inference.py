@@ -19,6 +19,8 @@ import logging
 import os
 import random
 import numpy as np
+import pyloudnorm as pyln
+import soundfile as sf
 
 import torch
 import torchaudio
@@ -118,6 +120,7 @@ def main():
     os.makedirs(args.result_dir, exist_ok=True)
     fn = os.path.join(args.result_dir, "wav.scp")
     f = open(fn, "w")
+    tts_key = ""
     # 初始化torch
     with torch.no_grad():
         # 以 测试数据集中的每一行数据作为循环（实际上推理的时候只循环一次，因为只有一行数据）
@@ -185,10 +188,20 @@ def main():
                     )
             # 这就是开始干活了…
             model_output = model.inference(**model_input)
+            #testing
+            out_audio = model_output["tts_speech"]
             # 以下是把数据存成音频文件（wav.scp），不重要了。
             tts_key = "{}_{}".format(utts[0], tts_index[0])
             tts_fn = os.path.join(args.result_dir, "{}.wav".format(tts_key))
-            torchaudio.save(tts_fn, model_output["tts_speech"], sample_rate=22050)
+            torchaudio.save(tts_fn, out_audio, sample_rate=22050)
+            #normalize
+            data, sr = sf.read(tts_fn) # load audio
+            # measure the loudness first
+            meter = pyln.Meter(sr) # create BS.1770 meter
+            loudness = meter.integrated_loudness(data)
+            # loudness normalize audio to -25 dB LUFS
+            out_audio = pyln.normalize.loudness(data, loudness, -25.0)
+            sf.write(tts_fn, out_audio, sr)
             f.write("{} {}\n".format(tts_key, tts_fn))
             f.flush()
     f.close()
