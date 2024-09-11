@@ -3,6 +3,7 @@ import os
 import random
 import subprocess
 from pathlib import Path
+import logging
 
 import gradio as gr
 import psutil
@@ -11,6 +12,7 @@ from gradio_log import Log
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+logging.getLogger(__file__)
 
 def data_path(path, base):
     return Path(f"./data/{base}/{path}")
@@ -62,7 +64,6 @@ def load_refrence_wav(refrence_name, project_input_dir):
     )
     [spkr, voice] = refrence_name.split(" - ")
     path = data_path(f"{spkr}/train", root_dir) / f"{voice}.wav"
-    print(path)
     return os.path.realpath(path)
 
 
@@ -98,7 +99,7 @@ def preprocess(
         except Exception:
             pass
 
-        print(
+        logging.info(
             "processing state",
             state,
             "with input_path: ",
@@ -261,6 +262,10 @@ def inference(
     w1,
     w2,
 ):
+    if not text:
+        raise gr.Error("no text.")
+    if not voice:
+        raise gr.Error("no voice.")
     output_path = data_path(output_path, project_input_dir)
     train_list = os.path.join(output_path, "train", "temp2", "data.list")
     utt2data_list = Path(train_list).with_name("utt2data.list")
@@ -272,16 +277,16 @@ def inference(
     voice = voice.split(" - ")[1]  # spkr1 - voice1 => voice1
     if not voice:
         raise "empty voice."
-    spk_mix = spk_mix and spk_mix.split(" - ")[1] or False
+    spk_mix = spk_mix and spk_mix.split(" - ")[1] or ""
+    mix_file = mix_file and os.path.dirname(mix_file) or ""
     mix_rate = f"{w1}-{w2}"
     if spk_mix:
-        mix_file = os.path.realpath( os.path.dirname(mix_file) + "/../train/temp1/utt2embedding.pt")
-        print(mix_file)
+        mix_file = os.path.realpath( f"{mix_file}/../train/temp1/utt2embedding.pt")
     json_path = str(Path(res_dir) / "tts_text.json")
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
 
-    print(f"call cosy/bin/infer {mode} => {voice} says: {text} with r_seed {seed}")
+    logging.info(f"call cosyvoice/bin/inference.py {mode} => {voice} says: {text} with r_seed {seed}")
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
     cmd = [
         r"python3",

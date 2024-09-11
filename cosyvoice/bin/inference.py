@@ -61,7 +61,7 @@ def get_args():
     parser.add_argument("--mix_rate", required=False, help="mix rate with origin voice")
 
     args = parser.parse_args()
-    print(args)
+    logging.info(args)
     return args
 
 
@@ -132,10 +132,10 @@ def main():
                 "utts"
             ]  # {'utts': ['李弘彬_疑惑']  <--- 这里取的就是在WebUI里选的音色模型，就是['李弘彬_疑惑']
             assert len(utts) == 1, "inference mode only support batchsize 1"
-            text = batch["text"]
+            text = batch["text"]  # noqa: F841
             text_token = batch["text_token"].to(device)
             text_token_len = batch["text_token_len"].to(device)
-            tts_text = batch["tts_text"]
+            tts_text = batch["tts_text"]  # noqa: F841
             tts_index = batch["tts_index"]
             tts_text_token = batch["tts_text_token"].to(device)
             tts_text_token_len = batch["tts_text_token_len"].to(device)
