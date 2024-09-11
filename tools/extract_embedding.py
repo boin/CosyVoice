@@ -60,13 +60,13 @@ def main(args):
             .flatten()
             .tolist()
         )
-        utt2embedding[utt] = embedding
+        utt2embedding[utt] = embedding #每句话都生成一个embedding
         spk = utt2spk[utt]
         if spk not in spk2embedding:
             spk2embedding[spk] = []
-        spk2embedding[spk].append(embedding)
+        spk2embedding[spk].append(embedding) #spk2embedding 的 spk 下有每句话的 embeddeding
     for k, v in spk2embedding.items():
-        flat_embedding = torch.tensor(v).mean(dim=0, keepdim=True)
+        flat_embedding = torch.tensor(v).mean(dim=0, keepdim=True) #把每个spk的所有语料embedding都flat一遍
         spk2embedding[k] = (flat_embedding.tolist())[0]
         base_spkinfo[k] = {
             "embedding": flat_embedding,
@@ -74,10 +74,10 @@ def main(args):
             "speech_token": [],
         }
 
-    torch.save(utt2embedding, "{}/utt2embedding.pt".format(args.dir))
-    torch.save(spk2embedding, "{}/spk2embedding.pt".format(args.dir))
+    torch.save(utt2embedding, "{}/utt2embedding.pt".format(args.dir))    #每一条语料的embedding
+    torch.save(spk2embedding, "{}/spk2embedding.pt".format(args.dir))    #每个spk的所有embedding数组
 
-    torch.save(base_spkinfo, "{}/spk2info.pt".format(args.dir))
+    torch.save(base_spkinfo, "{}/spk2info.pt".format(args.dir))          #每个spk存一个flat（混合）embeddeding
 
 
 if __name__ == "__main__":

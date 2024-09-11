@@ -18,6 +18,7 @@ import argparse
 import logging
 import os
 import random
+import numpy as np
 
 import torch
 import torchaudio
@@ -48,6 +49,12 @@ def get_args():
     )
     parser.add_argument("--result_dir", required=True, help="asr result file")
     parser.add_argument("--rseed", required=False, help="setup a ramdon seed")
+    parser.add_argument("--mix", required=False, help="another voice to mix")
+    parser.add_argument(
+        "--mix_pt", required=False, help="pt path contains the voice embedding"
+    )
+    parser.add_argument("--mix_rate", required=False, help="mix rate with origin voice")
+
     args = parser.parse_args()
     print(args)
     return args
@@ -66,6 +73,10 @@ def main():
     gpu=0,                                                                   # 使用第一块GPU
     mode='zero_shot',                                                        # 推理模式 zero_shot
     result_dir='data/LHB_0.5MIN_ID30/output/outputs'                         # 输出地址
+    rssed=234324231                                                          # 随机数
+    mix_pt='output/train/temp1/utt2embedding.pt'                             # 某一条语料音色混合的PT文件
+    mix = 'utt'                                                              # 音色混合的音色名
+    mix_rate = 0.5-0.3                                                       # 音色混合的比例
     """
     args = get_args()
 
@@ -157,6 +168,21 @@ def main():
                     "llm_embedding": utt_embedding,
                     "flow_embedding": utt_embedding,
                 }
+            # 如果涉及到音色融合，那么使用的llm_embedding使用融合的pt版本
+            # 根据 voice 取到对应的 embbeding
+            if args.mix:
+                pt = torch.load(args.mix_pt)
+                mix_embbeding = pt[args.mix]
+                [r1, r2] = args.mix_rate.split("-")
+                if mix_embbeding and r1 and r2:
+                    # print(r1, r2, mix_embbeding, utt_embedding.tolist()[0])
+                    model_input["llm_embedding"] = torch.tensor(
+                        np.array([  # 绑定成2维数组
+                            np.asarray(utt_embedding.tolist()[0]) * float(r1)
+                            + np.asarray(mix_embbeding) * float(r2)
+                        ]),
+                        dtype=torch.float32,
+                    )
             # 这就是开始干活了…
             model_output = model.inference(**model_input)
             # 以下是把数据存成音频文件（wav.scp），不重要了。

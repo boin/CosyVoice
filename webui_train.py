@@ -23,15 +23,19 @@ def get_docker_logs():
     log_path = base_path
     return log_path
 
-'''
+
+"""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-'''
+"""
+
+
 def generate_seed():
     seed = random.randint(1, 100000000)
     return {"__type__": "update", "value": seed}
+
 
 def refresh_voice(project_input_dir, output_path):
     content = (
@@ -39,30 +43,39 @@ def refresh_voice(project_input_dir, output_path):
     ).read_text()
     voices = []
     for item in content.split("\n"):
-        if (item): 
-            [ voice, spkr ] = item.split(" ")
-            voices.append(f'{spkr} - {voice}')
+        if item:
+            [voice, spkr] = item.split(" ")
+            voices.append(f"{spkr} - {voice}")
     return gr.Dropdown(choices=voices)
 
+
 def load_refrence_wav(refrence_name, project_input_dir):
-    if not project_input_dir: return 
-    root_dir = project_input_dir.endswith('.pt') and os.path.basename(os.path.realpath(f'{project_input_dir}/../../../')) or project_input_dir
+    if not project_input_dir:
+        return
+    root_dir = (
+        project_input_dir.endswith(".pt")
+        and os.path.basename(os.path.realpath(f"{project_input_dir}/../../../"))
+        or project_input_dir
+    )
     [spkr, voice] = refrence_name.split(" - ")
-    path = data_path(f'{spkr}/train', root_dir) / f"{voice}.wav"
+    path = data_path(f"{spkr}/train", root_dir) / f"{voice}.wav"
     print(path)
     return os.path.realpath(path)
 
+
 def load_mix_ref(pt_dir):
-    if not pt_dir: return ""
+    if not pt_dir:
+        return ""
     content = (
-        Path(f'{os.path.dirname(pt_dir)}/../train/temp1/utt2spk')
+        Path(f"{os.path.dirname(pt_dir)}/../train/temp1/utt2spk")
     ).read_text() or ""
     voices = []
     for item in content.split("\n"):
-        if (item): 
-            [ voice, spkr ] = item.split(" ")
-            voices.append(f'{spkr} - {voice}')
+        if item:
+            [voice, spkr] = item.split(" ")
+            voices.append(f"{spkr} - {voice}")
     return gr.Dropdown(choices=voices)
+
 
 def preprocess(
     project_input_dir, train_input_path, val_input_path, output_path, pre_model_path
@@ -231,7 +244,20 @@ def train(project_input_dir, output_path, pre_model_path, thread_num, max_epoch)
         return log(f"训练出错啦 {out}")
 
 
-def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text, voice, seed, spk_mix, mix_file):
+def inference(
+    mode,
+    project_input_dir,
+    output_path,
+    epoch,
+    pre_model_path,
+    text,
+    voice,
+    seed,
+    spk_mix,
+    mix_file,
+    w1,
+    w2,
+):
     output_path = data_path(output_path, project_input_dir)
     train_list = os.path.join(output_path, "train", "temp2", "data.list")
     utt2data_list = Path(train_list).with_name("utt2data.list")
@@ -240,44 +266,51 @@ def inference(mode, project_input_dir, output_path, epoch, pre_model_path, text,
     hifigan_model = os.path.join(pre_model_path, "hift.pt")
     res_dir = Path(output_path) / "outputs"
     res_dir.mkdir(exist_ok=True, parents=True)
-    voice = voice.split(" - ")[1] # spkr1 - voice1 => voice1
-    if not voice: 
-        raise 'empty voice.'
+    voice = voice.split(" - ")[1]  # spkr1 - voice1 => voice1
+    if not voice:
+        raise "empty voice."
     spk_mix = spk_mix.split(" - ")[1]
     if spk_mix:
-        
-
+        mix_file = os.path.join(output_path, "train", "temp1", "utt2embedding.pt")
+        mix_rate = f"{w1}-{w2}"
     json_path = str(Path(res_dir) / "tts_text.json")
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
 
-    print(f'call cosy/bin/infer {mode} => {voice} says: {text} with r_seed {seed}')
+    print(f"call cosy/bin/infer {mode} => {voice} says: {text} with r_seed {seed}")
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
     cmd = [
-            r"python3",
-            "cosyvoice/bin/inference.py",
-            "--mode",
-            mode,
-            "--gpu",
-            "0",
-            "--config",
-            "conf/cosyvoice.yaml",
-            "--prompt_data",
-            train_list,
-            "--prompt_utt2data",
-            str(utt2data_list),
-            "--tts_text",
-            json_path,
-            "--llm_model",
-            llm_model,
-            "--flow_model",
-            flow_model,
-            "--hifigan_model",
-            hifigan_model,
-            "--result_dir",
-            str(res_dir),
-            "--rseed", str(seed)
-        ]
+        r"python3",
+        "cosyvoice/bin/inference.py",
+        "--mode",
+        mode,
+        "--gpu",
+        "0",
+        "--config",
+        "conf/cosyvoice.yaml",
+        "--prompt_data",
+        train_list,
+        "--prompt_utt2data",
+        str(utt2data_list),
+        "--tts_text",
+        json_path,
+        "--llm_model",
+        llm_model,
+        "--flow_model",
+        flow_model,
+        "--hifigan_model",
+        hifigan_model,
+        "--result_dir",
+        str(res_dir),
+        "--rseed",
+        str(seed),
+        "--mix",
+        spk_mix,
+        "--mix_pt",
+        mix_file,
+        "--mix_rate",
+        mix_rate,
+    ]
     subprocess.run(cmd)
     output_path = str(Path(res_dir) / f"{voice}_0.wav")
     return output_path
@@ -305,7 +338,7 @@ with gr.Blocks() as demo:
             container=True,
             value="test",
             show_label=False,
-            info="项目数据根目录，在TeamSpace/TTD-Space/CosyVoice_Train/目录下新建，训练数据和模型输出都此文件夹下",
+            info="项目数据根目录，在TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Train/目录下新建，训练数据和模型输出都此文件夹下",
         )
     with gr.Row():
         output_dir = gr.Text(
@@ -364,38 +397,50 @@ with gr.Blocks() as demo:
                 label="推理模式",
                 value="zero_shot",
                 info="SFT模型（SFT）和3秒复刻模型（zero-shot）",
-                scale=1
+                scale=1,
             )
             epoch = gr.Number(
                 interactive=True,
                 precision=0,
                 label="模型轮次ID",
                 info="使用模型输出文件夹中训练第？轮次的模型",
-                scale=1
+                scale=1,
             )
             with gr.Column():
-                seed = gr.Number(value=0, label="随机推理种子(影响全局推理)") 
+                seed = gr.Number(value=0, label="随机推理种子(影响全局推理)")
                 seed_button = gr.Button(value="\U0001f3b2")
         with gr.Row():
             with gr.Column(scale=2):
                 refresh = gr.Button("刷新音色列表", variant="primary")
                 voices = gr.Dropdown(
                     label="首选音色列表",
-                    info="根据训练集的数据，在预处理中生成，点右侧刷新"
+                    info="根据训练集的数据，在预处理中生成，点右侧刷新",
                 )
-            preview = gr.Audio(label="首选参考音预览", show_download_button=False, show_share_button=False, sources=[], scale=2)
+            preview = gr.Audio(
+                label="首选参考音预览",
+                show_download_button=False,
+                show_share_button=False,
+                sources=[],
+                scale=2,
+            )
             with gr.Column(scale=2):
-                mix_file=gr.FileExplorer(
+                mix_file = gr.FileExplorer(
                     label="加载融合音色底模",
                     file_count="single",
                     root_dir="./data",
-                    glob="*/*.pt"
+                    glob="*/*.pt",
                 )
                 spk_mix = gr.Dropdown(
-                    label='选择融合音色',
+                    label="选择融合音色",
                     info="如果需要融合某个音色，可以在这里选择",
                 )
-            preview2 = gr.Audio(label="融合参考音预览", show_download_button=False, show_share_button=False, sources=[], scale=2)   
+            preview2 = gr.Audio(
+                label="融合参考音预览",
+                show_download_button=False,
+                show_share_button=False,
+                sources=[],
+                scale=2,
+            )
         with gr.Row():
             w1 = gr.Number(value=0.5, label="首选音色权重", interactive=True)
             w2 = gr.Number(value=0.5, label="融合音色权重", interactive=True)
@@ -405,8 +450,10 @@ with gr.Blocks() as demo:
     Log(
         get_docker_logs(), dark=True, xterm_font_size=12, render=bool(get_docker_logs())
     )
-    voices.change(load_refrence_wav, inputs=[ voices, project_input_dir ], outputs=preview)
-    spk_mix.change(load_refrence_wav, inputs=[ spk_mix, mix_file ], outputs=preview2)
+    voices.change(
+        load_refrence_wav, inputs=[voices, project_input_dir], outputs=preview
+    )
+    spk_mix.change(load_refrence_wav, inputs=[spk_mix, mix_file], outputs=preview2)
 
     seed_button.click(generate_seed, inputs=[], outputs=seed)
     mix_file.change(load_mix_ref, inputs=[mix_file], outputs=[spk_mix])
@@ -445,7 +492,9 @@ with gr.Blocks() as demo:
             voices,
             seed,
             spk_mix,
-            mix_file
+            mix_file,
+            w1,
+            w2,
         ],
         outputs=out_audio,
     )
