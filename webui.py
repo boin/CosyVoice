@@ -213,25 +213,8 @@ instruct_dict = {
 def change_instruction(mode_checkbox_group):
     return instruct_dict[mode_checkbox_group]
 
-
-def generate_audio(
-    tts_text,
-    mode_checkbox_group,
-    sft_dropdown,
-    prompt_text,
-    prompt_wav_upload,
-    prompt_wav_record,
-    instruct_text,
-    seed,
-    speed_factor,
-    new_dropdown,
-    prompt_wav_select,
-    llm_model,
-):
-    cosyvoice = check_cosy_inst(llm_model)
-    if prompt_wav_select is not None:
-        prompt_wav = prompt_wav_select
-    elif prompt_wav_upload is not None:
+def generate_audio(tts_text, mode_checkbox_group, sft_dropdown, prompt_text, prompt_wav_upload, prompt_wav_record, instruct_text, seed,speed_factor,new_dropdown):
+    if prompt_wav_upload is not None:
         prompt_wav = prompt_wav_upload
     elif prompt_wav_record is not None:
         prompt_wav = prompt_wav_record
@@ -295,9 +278,9 @@ def generate_audio(
     if mode_checkbox_group == "预训练音色":
         logging.info("get sft inference request")
         set_all_random_seed(seed)
-        output = cosyvoice.inference_sft(tts_text, sft_dropdown, new_dropdown)
-    elif mode_checkbox_group == "3s极速复刻":
-        logging.info("get zero_shot inference request")
+        output = cosyvoice.inference_sft(tts_text,sft_dropdown,new_dropdown)
+    elif mode_checkbox_group == '3s极速复刻':
+        logging.info('get zero_shot inference request')
         prompt_speech_16k = postprocess(load_wav(prompt_wav, prompt_sr))
         set_all_random_seed(seed)
         output = cosyvoice.inference_zero_shot(tts_text, prompt_text, prompt_speech_16k)
@@ -407,7 +390,12 @@ def main():
         gr.Markdown(
             "### 代码库 [CosyVoice](https://github.com/FunAudioLLM/CosyVoice) 预训练模型 [CosyVoice-300M](https://www.modelscope.cn/models/speech_tts/CosyVoice-300M) [CosyVoice-300M-Instruct](https://www.modelscope.cn/models/speech_tts/CosyVoice-300M-Instruct) [CosyVoice-300M-SFT](https://www.modelscope.cn/models/speech_tts/CosyVoice-300M-SFT)"
         )
-        gr.Markdown("#### 请输入需要合成的文本，选择推理模式，并按照提示步骤进行操作")
+        token_max_n = gr.Number(value=30,interactive=True,label="切分单句最大token数")
+        token_min_n = gr.Number(value=20,interactive=True,label="切分单句最小token数")
+        merge_len = gr.Number(value=15,label="低于多少token就和前句合并",interactive=True)
+        w1 = gr.Number(value=0.5, label="音色融合权重", interactive=True)
+        spk_mix = gr.Dropdown(choices=spk_new, label='选择融合音色', value=spk_new[0],interactive=True)
+        w2 = gr.Number(value=0.5, label="音色融合权重", interactive=True)
         with gr.Row():
             mode_checkbox_group = gr.Radio(
                 choices=inference_mode_list,
@@ -489,6 +477,7 @@ def main():
             placeholder="请输入instruct文本.",
             value="",
         )
+
         with gr.Row():
             new_name = gr.Textbox(
                 label="输入新的音色名称", lines=1, placeholder="输入新的音色名称.", value="", scale=80
@@ -522,7 +511,7 @@ def main():
             label="合成音频",
             value=None,
             streaming=True,
-            autoplay=True,  # disable auto play for Windows, due to https://developer.chrome.com/blog/autoplay#webaudio
+            # autoplay=True,  # disable auto play for Windows, due to https://developer.chrome.com/blog/autoplay#webaudio
             interactive=False,
             show_label=True,
             show_download_button=False,
@@ -562,6 +551,7 @@ def main():
                 new_dropdown,
                 prompt_wav_select,
                 llm_model,
+                spk_mix,w1,w2,token_max_n,token_min_n,merge_len
             ],
             outputs=[audio_output],
         )
