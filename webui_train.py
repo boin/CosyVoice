@@ -8,6 +8,9 @@ import gradio as gr
 import psutil
 from gradio_log import Log
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 
 def data_path(path, base):
     return Path(f"./data/{base}/{path}")
@@ -269,10 +272,11 @@ def inference(
     voice = voice.split(" - ")[1]  # spkr1 - voice1 => voice1
     if not voice:
         raise "empty voice."
-    spk_mix = spk_mix.split(" - ")[1]
+    spk_mix = spk_mix and spk_mix.split(" - ")[1] or False
+    mix_rate = f"{w1}-{w2}"
     if spk_mix:
-        mix_file = os.path.join(output_path, "train", "temp1", "utt2embedding.pt")
-        mix_rate = f"{w1}-{w2}"
+        mix_file = os.path.realpath( os.path.dirname(mix_file) + "/../train/temp1/utt2embedding.pt")
+        print(mix_file)
     json_path = str(Path(res_dir) / "tts_text.json")
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)

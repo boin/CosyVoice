@@ -31,6 +31,9 @@ from tqdm import tqdm
 from cosyvoice.cli.model import CosyVoiceModel
 from cosyvoice.dataset.dataset import Dataset
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 
