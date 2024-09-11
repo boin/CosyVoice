@@ -287,7 +287,7 @@ with gr.Blocks() as demo:
             container=True,
             value="test",
             show_label=False,
-            info="项目数据根目录，在TeamSpace/TTD-Space/CosyVoice_Train/目录下新建，训练数据和模型输出都此文件夹下",
+            info="项目数据根目录，在TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Train/目录下新建，训练数据和模型输出都此文件夹下",
         )
     with gr.Row():
         output_dir = gr.Text(
