@@ -31,6 +31,9 @@ from tqdm import tqdm
 from cosyvoice.cli.model import CosyVoiceModel
 from cosyvoice.dataset.dataset import Dataset
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 
@@ -58,7 +61,7 @@ def get_args():
     parser.add_argument("--mix_rate", required=False, help="mix rate with origin voice")
 
     args = parser.parse_args()
-    print(args)
+    logging.info(args)
     return args
 
 
@@ -129,10 +132,10 @@ def main():
                 "utts"
             ]  # {'utts': ['李弘彬_疑惑']  <--- 这里取的就是在WebUI里选的音色模型，就是['李弘彬_疑惑']
             assert len(utts) == 1, "inference mode only support batchsize 1"
-            text = batch["text"]
+            text = batch["text"]  # noqa: F841
             text_token = batch["text_token"].to(device)
             text_token_len = batch["text_token_len"].to(device)
-            tts_text = batch["tts_text"]
+            tts_text = batch["tts_text"]  # noqa: F841
             tts_index = batch["tts_index"]
             tts_text_token = batch["tts_text_token"].to(device)
             tts_text_token_len = batch["tts_text_token_len"].to(device)
@@ -171,7 +174,7 @@ def main():
                     "llm_embedding": utt_embedding,
                     "flow_embedding": utt_embedding,
                 }
-            # 如果涉及到音色融合，那么使用的llm_embedding使用融合的pt版本
+            # 如果涉及到音色融合，那么使用的flow_embedding使用融合的pt版本
             # 根据 voice 取到对应的 embbeding
             if args.mix:
                 pt = torch.load(args.mix_pt)
@@ -179,7 +182,7 @@ def main():
                 [r1, r2] = args.mix_rate.split("-")
                 if mix_embbeding and r1 and r2:
                     # print(r1, r2, mix_embbeding, utt_embedding.tolist()[0])
-                    model_input["llm_embedding"] = torch.tensor(
+                    model_input["flow_embedding"] = torch.tensor(
                         np.array([  # 绑定成2维数组
                             np.asarray(utt_embedding.tolist()[0]) * float(r1)
                             + np.asarray(mix_embbeding) * float(r2)

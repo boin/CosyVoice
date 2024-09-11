@@ -32,6 +32,9 @@ from gradio_log import Log
 from cosyvoice.cli.cosyvoice import CosyVoice
 from cosyvoice.utils.file_utils import load_wav
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 os.environ["CURL_CA_BUNDLE"] = ""
 os.environ["HF_DATASETS_OFFLINE"] = "1"
 os.environ["MODELSCOPE_CACHE"] = "./.cache/modelscope"

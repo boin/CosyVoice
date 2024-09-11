@@ -11,8 +11,8 @@ services:
     volumes:
       - /home/docker/mnt/TeamSpace/情感AI语料:/opt/CosyVoice/ttd_lib
       - /home/docker/mnt/TTD-Data/cosy-voice/.cache:/opt/CosyVoice/.cache
-      - /home/docker/mnt/TeamSpace/TTD-Space/CosyVoice_Voices:/opt/CosyVoice/voices
-      - /home/docker/mnt/TeamSpace/TTD-Space/CosyVoice_Train:/opt/CosyVoice/data
+      - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Voices:/opt/CosyVoice/voices
+      - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Train:/opt/CosyVoice/data
       - /home/docker/mnt/TTD-Data/cosy-voice/pretrained_models:/opt/CosyVoice/pretrained_models
     working_dir: /opt/CosyVoice
     shm_size: 32G

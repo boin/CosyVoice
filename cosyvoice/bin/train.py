@@ -21,6 +21,9 @@ import argparse
 import datetime
 import logging
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 from copy import deepcopy
 
