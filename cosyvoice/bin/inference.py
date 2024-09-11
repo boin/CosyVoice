@@ -174,7 +174,7 @@ def main():
                     "llm_embedding": utt_embedding,
                     "flow_embedding": utt_embedding,
                 }
-            # 如果涉及到音色融合，那么使用的llm_embedding使用融合的pt版本
+            # 如果涉及到音色融合，那么使用的flow_embedding使用融合的pt版本
             # 根据 voice 取到对应的 embbeding
             if args.mix:
                 pt = torch.load(args.mix_pt)
@@ -182,7 +182,7 @@ def main():
                 [r1, r2] = args.mix_rate.split("-")
                 if mix_embbeding and r1 and r2:
                     # print(r1, r2, mix_embbeding, utt_embedding.tolist()[0])
-                    model_input["llm_embedding"] = torch.tensor(
+                    model_input["flow_embedding"] = torch.tensor(
                         np.array([  # 绑定成2维数组
                             np.asarray(utt_embedding.tolist()[0]) * float(r1)
                             + np.asarray(mix_embbeding) * float(r2)

@@ -12,7 +12,8 @@ from gradio_log import Log
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-logging.getLogger(__file__)
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 def data_path(path, base):
     return Path(f"./data/{base}/{path}")
