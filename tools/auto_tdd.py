@@ -1,5 +1,17 @@
 from pathlib import Path
 
+
+#init-vad-table
+
+
+#取得最相近的VAD结果
+def findNearestVAD(vad:[float, float, float]):
+    return []
+
+#取得最相似的情绪关键词结果
+def findNearestKW(keyword):
+    return []
+
 def load_refrence(actor, emo, project_name):
     print('load refrence called:', actor, emo)
     root_dir = f"./data/{project_name}"
