@@ -23,8 +23,10 @@ KDTree.search(tree_obj.keys(), [v, a, d])
 # 取得最相近的VAD count结果
 def findNearestVAD(vad: [str or int, str or int, str or int], voices: [str], count=10):
     tree_obj = init_vad_tree(voices)  # text.splitlines()
+    #print(tree_obj)
     vad_tree = np.array(list(tree_obj.keys()))
-    if not vad_tree: return []
+    #print(vad_tree)
+    if len(vad_tree) < 1: return []  # noqa: E701
     vad = [int(vad[0]), int(vad[1]), int(vad[2])]
     logging.debug("vad:", vad)
 
@@ -44,7 +46,7 @@ def init_vad_tree(voice_list):
     tree_obj = {}
     for voice in voice_list:
         if voice:
-            print(voice, pattern.match(voice))
+            #logging.debug(voice, pattern.match(voice).all)
             vad = pattern.match(voice) and pattern.match(voice).group(1)  # \d6 vad
             if vad:
                 arr_idx = tuple(int(vad[n : n + 2]) for n in range(0, len(vad), 2))

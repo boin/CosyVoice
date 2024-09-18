@@ -9,7 +9,7 @@ services:
       - PYTHONIOENCODING=UTF-8       
       - PYTHONPATH=./:./third_party/Matcha-TTS:./third_party/AcademiCodec
     volumes:
-      - /home/docker/mnt/TeamSpace/情感AI语料:/opt/CosyVoice/ttd_lib
+      - /home/docker/mnt/TeamSpace/TTD-Space/打标库:/opt/CosyVoice/ttd_lib
       - /home/docker/mnt/TTD-Data/cosy-voice/.cache:/opt/CosyVoice/.cache
       - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Voices:/opt/CosyVoice/voices
       - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Train:/opt/CosyVoice/data

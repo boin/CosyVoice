@@ -455,6 +455,11 @@ def main():
             prompt_wav_record = gr.Audio(
                 sources="microphone", type="filepath", label="录制prompt"
             )
+        gr.Markdown(
+            "### 音色混合区（SFT推理） - 选择第二款音色来融合"
+        )
+        with gr.Row():
+            False
         tts_text = gr.Textbox(
             label="输入合成文本",
             lines=1,

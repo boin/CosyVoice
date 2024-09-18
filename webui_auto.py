@@ -1,10 +1,9 @@
 import json
-import os
 import random
 import subprocess
 from pathlib import Path
 from tools.emo_dialog_parser import dialog_parser
-from tools.auto_tdd import load_refrence, load_actor
+from tools.auto_ttd import load_refrence, load_actor, load_projects
 
 import logging
 import gradio as gr
@@ -25,6 +24,7 @@ def upload_textbook(text_url):
         lines.append(text)
     return lines
 
+
 def start_inference(project_name, output_path, text, voice, id, r_seed):
     if not text:
         raise gr.Error("no text.")
@@ -32,14 +32,14 @@ def start_inference(project_name, output_path, text, voice, id, r_seed):
         raise gr.Error("no voice.")
     mode = "zero-shot"
     epoch = 0
-    pre_model_path = "pretrained_models/CosyVoice-300M"
-    output_path = f'data/{project_name}/{output_path})'
-    train_list = os.path.join(output_path, "train", "temp2", "data.list")
+    pre_model_path = Path("pretrained_models/CosyVoice-300M")
+    output_path = Path(f"data/{project_name}/{output_path})")
+    train_list = output_path / "train" / "temp2" / "data.list"
     utt2data_list = Path(train_list).with_name("utt2data.list")
-    llm_model = os.path.join(output_path, "models", f"epoch_{epoch}_whole.pt")
-    flow_model = os.path.join(pre_model_path, "flow.pt")
-    hifigan_model = os.path.join(pre_model_path, "hift.pt")
-    res_dir = Path(output_path) / "outputs"
+    llm_model = output_path / "models" / f"epoch_{epoch}_whole.pt"
+    flow_model = pre_model_path / "flow.pt"
+    hifigan_model = pre_model_path / "hift.pt"
+    res_dir = output_path / "outputs" / str(random.randint(1e16, 1e17))
     res_dir.mkdir(exist_ok=True, parents=True)
     voice = voice.split(" - ")[1]  # spkr1 - voice1 => voice1
     if not voice:
@@ -48,7 +48,9 @@ def start_inference(project_name, output_path, text, voice, id, r_seed):
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
 
-    logging.info(f"call cosyvoice/bin/inference.py {mode} => {voice} says: {text} with r_seed {r_seed}")
+    logging.info(
+        f"call cosyvoice/bin/inference.py {mode} => {voice} says: {text} with r_seed {r_seed}"
+    )
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
     cmd = [
         r"python3",
@@ -78,17 +80,24 @@ def start_inference(project_name, output_path, text, voice, id, r_seed):
     ]
     subprocess.run(cmd)
     output_path = str(Path(res_dir) / f"{voice}_0.wav")
-    return output_path 
+    return output_path, gr.Button(link=output_path, variant="stop")
+
 
 with gr.Blocks(fill_width=True) as demo:
     s = gr.State(upload_textbook("data/第一章 天命，将至_final.txt"))
-    project_name = gr.State("test")
+    projects = load_projects()
+    project_name = gr.State(projects[-1] if len(projects) > 0 else "")
     rseed = gr.State({})
     # print(s)
 
     with gr.Row():
-        project = gr.Textbox("test", label="项目名称")
+        project = gr.Dropdown(choices=projects, value=project_name.value, label="项目名称")
         project.change(lambda x: x, project, project_name)
+        gr.Button("刷新").click(
+            lambda: {"__type__": "update", "choices": load_projects()},
+            inputs=[],
+            outputs=[project],
+        )
         output_dir = gr.Textbox("output", label="输出路径")
         upload = gr.File(label="上传台词本", file_types=["text"])
         upload.upload(upload_textbook, inputs=[upload], outputs=[s])
@@ -103,7 +112,7 @@ with gr.Blocks(fill_width=True) as demo:
             with gr.Row():
                 with gr.Column():
                     with gr.Row():
-                        id = gr.Text(task['id'], render=False)
+                        id = gr.Text(task["id"], render=False)
                         gr.Text(
                             f'{task["id"]} {task["actor"]}',
                             label="metadata",
@@ -127,23 +136,29 @@ with gr.Blocks(fill_width=True) as demo:
 
                     with gr.Row():
                         gr.Text(
-                            f'{task["emo_chn"]} ( {task["emo_eng"]} ) [ V: {task["V"]} A: {task["A"]} D: {task["D"]} ]',
+                            f'{task["emo_chn"]}  [ V: {task["V"]} A: {task["A"]} D: {task["D"]} ]',
                             show_label=False,
                             container=False,
                         )
+                        actors = load_actor(task["actor"], project_name.value)
+                        print("actors:", actors)
                         gr.Dropdown(
-                            choices=load_actor(task["actor"], project_name.value),
-                            value=0,
+                            choices=actors,
+                            value=actors[0],
                             show_label=False,
                             container=False,
+                        )
+                        refrences = (
+                            load_refrence(
+                                project_name.value,
+                                actors[0], #use parsed actorname than original
+                                [task["V"], task["A"], task["D"]],
+                                emo_kw=task["emo_chn"],
+                            ),
                         )
                         ref_ctl = gr.Dropdown(
-                            choices=load_refrence(
-                                project_name.value,
-                                task["actor"],
-                                [task["V"], task["A"], task["D"]],
-                            ),
-                            value=0,
+                            choices=refrences,
+                            value=refrences[0],
                             show_label=False,
                             container=False,
                         )
@@ -159,12 +174,12 @@ with gr.Blocks(fill_width=True) as demo:
                 gen_btn.click(
                     start_inference,
                     inputs=[project_name, output_dir, text, ref_ctl, id, rseed],
-                    outputs=[preview_audio],
+                    outputs=[preview_audio, download_btn],
                 )
-                download_btn.click(lambda: gr.Info("WIP"))
+                # download_btn.click(lambda: gr.Info("WIP"))
 
-        gr.Button("一键三连", variant="primary")
+        gr.Button("一键三连", variant="primary").click(lambda: None)
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=9883, inbrowser=False)
+    demo.launch(server_name="0.0.0.0", server_port=9883)

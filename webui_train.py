@@ -4,7 +4,7 @@ import random
 import subprocess
 from pathlib import Path
 import logging
-
+import tools.auto_ttd as ttd
 import gradio as gr
 import psutil
 from gradio_log import Log
@@ -15,8 +15,8 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-def data_path(path, base):
-    return Path(f"./data/{base}/{path}")
+def data_path(path, base, actor):
+    return Path("./data") / base / actor / path
 
 
 def log(data):
@@ -42,6 +42,13 @@ def generate_seed():
     seed = random.randint(1, 100000000)
     return {"__type__": "update", "value": seed}
 
+def refresh_lib_projects(project_input_dir):
+    return gr.Dropdown(choices=ttd.load_lib_projects())
+
+def refresh_lib_actors(project_input_dir):
+    list = ttd.load_lib_prj_actors(project_input_dir)
+    #print(list)
+    return {"__type__": "update", "choices": list, "value": list[0]}
 
 def refresh_voice(project_input_dir, output_path):
     content = (
@@ -54,7 +61,7 @@ def refresh_voice(project_input_dir, output_path):
             voices.append(f"{spkr} - {voice}")
     return gr.Dropdown(choices=voices)
 
-
+#TODO refractor to laod ttd_lib file
 def load_refrence_wav(refrence_name, project_input_dir):
     if not project_input_dir:
         return
@@ -83,17 +90,17 @@ def load_mix_ref(pt_dir):
 
 
 def preprocess(
-    project_input_dir, train_input_path, val_input_path, output_path, pre_model_path
+    project_input_dir, output_path, actor, split_ratio, force_flag
 ):
     for state, input_path in zip(
         ["train", "val"],
         [
-            data_path(train_input_path, project_input_dir),
-            data_path(val_input_path, project_input_dir),
+            data_path("train", project_input_dir, actor),
+            data_path("val", project_input_dir, actor),
         ],
     ):
-        temp1 = data_path(output_path, project_input_dir) / state / "temp1"
-        temp2 = data_path(output_path, project_input_dir) / state / "temp2"
+        temp1 = data_path(output_path, project_input_dir, actor) / state / "temp1"
+        temp2 = data_path(output_path, project_input_dir, actor) / state / "temp2"
         try:
             temp1.mkdir(parents=True)
             temp2.mkdir(parents=True)
@@ -101,14 +108,7 @@ def preprocess(
             pass
 
         logging.info(
-            "processing state",
-            state,
-            "with input_path: ",
-            project_input_dir,
-            input_path,
-            "temp_path:",
-            temp1,
-            temp2,
+            f'processing state {state}, with input_path:  {project_input_dir},  {input_path},  temp_path:  {temp1},  {temp2}, "src_split_ratio:" {split_ratio}, "force_flag" {force_flag}'
         )
 
         # subprocess.run([r'.\py311\python.exe', 'local/prepare_data.py',
@@ -117,9 +117,15 @@ def preprocess(
                 r"python3",
                 "local/prepare_data.py",
                 "--src_dir",
-                input_path,
+                str(input_path),
                 "--des_dir",
                 str(temp1),
+                "--actor",
+                actor,
+                "--init_split_ratio",
+                str(split_ratio),
+                "--force_flag",
+                str(force_flag)
             ],
             # capture_output= True
         )
@@ -186,11 +192,11 @@ def preprocess(
     return log("预处理全部完成，可以开始训练")
 
 
-def train(project_input_dir, output_path, pre_model_path, thread_num, max_epoch):
-    output_path = data_path(output_path, project_input_dir)
-    train_list = os.path.join(output_path, "train", "temp2", "data.list")
-    val_list = os.path.join(output_path, "val", "temp2", "data.list")
-    model_dir = Path(f"{output_path}/models")
+def train(project_input_dir, output_path, actor, pre_model_path, thread_num, max_epoch):
+    output_path = data_path(output_path, project_input_dir, actor)
+    train_list = output_path / "train/temp2/data.list"
+    val_list = output_path / "val/temp2/data.list"
+    model_dir = output_path / "models"
     model_dir.mkdir(exist_ok=True, parents=True)
 
     out = subprocess.run(
@@ -344,34 +350,43 @@ with gr.Blocks() as demo:
             gr.HTML(
                 value=f'<pre>{Path("data/README").read_text()}</pre>', show_label=False
             )
-        project_input_dir = gr.Text(
+        project_input_dir = gr.Dropdown(
+            choices=ttd.load_lib_projects(),
+            value=ttd.load_lib_projects()[0],
             container=True,
-            value="test",
             show_label=False,
-            info="项目数据根目录，在TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Train/目录下新建，训练数据和模型输出都此文件夹下",
+            info="项目数据根目录，在TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Train/目录下会自动新建，训练数据和模型输出都此文件夹下",
         )
-    with gr.Row():
-        output_dir = gr.Text(
-            label="模型输出文件夹",
-            value="output",
-            info="预处理与训练最终会输出在项目根目录的本文件夹下，没有会自动新建，一般不用改",
-        )
-        pretrained_model_path = gr.Text(
-            "pretrained_models/CosyVoice-300M",
-            label="预训练模型文件夹",
-            info="可选 300M-SFT/330M-Insturct 一般不用改",
-        )
+        with gr.Accordion("高级选项，一般不用管", open=False):
+            output_dir = gr.Text(
+                label="模型输出文件夹",
+                value="output",
+                info="预处理与训练最终会输出在项目根目录的本文件夹下，没有会自动新建，一般不用改",
+            )
+            pretrained_model_path = gr.Text(
+                "pretrained_models/CosyVoice-300M",
+                label="预训练模型文件夹",
+                info="可选 300M-SFT/330M-Insturct 一般不用改",
+            )
     with gr.Tab("训练"):
         with gr.Row():
-            train_input_path = gr.Text(
-                label="训练集目录名",
-                value="train",
-                info="需要自己按要求创建并存放数据，一般不用改",
+            actor = gr.Dropdown(
+                choices=[],
+                label="欲训练角色",
+                info="现在是一个一个角色单独训练",
+                interactive=True
             )
-            val_input_path = gr.Text(
-                label="测试集目录名",
-                value="val",
-                info="需要自己按要求创建并存放数据，一般不用改",
+            
+            gr.Button(
+                value="刷新角色",
+            ).click(refresh_lib_actors, [project_input_dir], [actor])
+            split_ratio = gr.Radio(choices=[
+                ("1:1", 50),("6:4", 60),("7:3", 70)
+            ], label="预料训练集/验证集分配比例",value=50)
+
+            re_init = gr.Checkbox(
+                label="重新分配语料",
+                info="如果语料库中此角色的语料有更新，或者调整了分配比例，那么就需要勾选此选项重新预处理"
             )
         preprocess_btn = gr.Button(
             "开始预处理（提取训练集音色数据，如果只是要新增推理的音色，只点这个就行了）",
@@ -460,6 +475,7 @@ with gr.Blocks() as demo:
     Log(
         get_docker_logs(), dark=True, xterm_font_size=12, render=bool(get_docker_logs())
     )
+    project_input_dir.change(refresh_lib_actors, inputs=[project_input_dir], outputs=[actor])
     voices.change(
         load_refrence_wav, inputs=[voices, project_input_dir], outputs=preview
     )
@@ -472,10 +488,10 @@ with gr.Blocks() as demo:
         preprocess,
         inputs=[
             project_input_dir,
-            train_input_path,
-            val_input_path,
             output_dir,
-            pretrained_model_path,
+            actor,
+            split_ratio,
+            re_init 
         ],
         outputs=status,
     )
@@ -484,6 +500,7 @@ with gr.Blocks() as demo:
         inputs=[
             project_input_dir,
             output_dir,
+            actor,
             pretrained_model_path,
             thread_num,
             max_epoch,
