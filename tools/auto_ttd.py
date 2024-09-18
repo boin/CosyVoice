@@ -3,6 +3,8 @@ from pathlib import Path
 
 from tools.vad import findNearestVAD
 
+TTD_LIB="./ttd_lib/"
+LIB_SUB="02_E-Motion/Tag"
 
 def load_projects(root_dir="./data"):
     return [d.name for d in os.scandir(f"{root_dir}") if d.is_dir()]
@@ -12,14 +14,14 @@ def load_prj_actors(project_name, root_dir="./data"):
     return [d.name for d in os.scandir(f"{root_dir}/{project_name}") if d.is_dir()]
 
 
-def load_lib_projects(root_dir="./ttd_lib"):
+def load_lib_projects(root_dir=TTD_LIB):
     lib_projects = [d.name for d in os.scandir(f"{root_dir}") if d.is_dir()]
     return lib_projects
 
 
-def load_lib_prj_actors(project_name, root_dir="./ttd_lib"):
+def load_lib_prj_actors(project_name, root_dir=TTD_LIB):
     lib_actors = [
-        d.name for d in os.scandir(f"{root_dir}/{project_name}") if d.is_dir()
+        d.name for d in os.scandir(f"{root_dir}/{project_name}/{LIB_SUB}") if d.is_dir()
     ]
     # print(lib_actors)
     return lib_actors

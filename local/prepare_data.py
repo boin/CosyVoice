@@ -7,25 +7,24 @@ import gradio as gr
 from pathlib import Path 
 import math
 from tqdm import tqdm
+from tools.auto_ttd import TTD_LIB, LIB_SUB
 
-
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger()
 
-
-TTD_LIB="./ttd_lib"
-
-#有声书_殓葬禁忌/古装_师父,GZJ_灵异/旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
+#240915_有声书_殓葬禁忌/02_E-Motion/Tag/古装_师父,GZJ_灵异/旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
 
 def init_from_lib(prj_name, actor, split_ratio):
     """
     项目名，角色名, 训练集和验证集的分配比例
     """
-    src_dir = os.path.join(TTD_LIB, prj_name, actor)
-    if not os.path.isdir(src_dir):
+
+    src_dir = Path(TTD_LIB) / prj_name / LIB_SUB / actor
+    if not src_dir.is_dir():
         raise gr.Error(f"导入语料库 {src_dir} 目录不存在!")
     wavs = [ f.path for f in os.scandir(src_dir) if f.is_file() and f.name.endswith('.wav') and not f.name.startswith('.')]
     count = len(wavs)
-    if count < 2: raise gr.Erorr("语料少于2条，无法训练")
+    if count < 2: raise gr.Error("语料少于2条，无法训练")
     stop_num = math.floor(count * split_ratio) * 2 #最小1
     tr_dir = f'./data/{prj_name}/{actor}/train'
     vl_dir = f'./data/{prj_name}/{actor}/val'
@@ -61,12 +60,13 @@ def main():
     actor = args.actor       #古装_师父,GZJ_灵异
 
     wavs = list(glob.glob('{}/{}/{}/*wav'.format(src_dir, actor, stage)))
-    #./data/有声书_殓葬禁忌/古装_师父,GZJ_灵异/train/旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
+    #./data/240915_有声书_殓葬禁忌/古装_师父,GZJ_灵异/train/旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
     if len(wavs) < 1 or args.force_flag:
         if len(wavs) < 1: logger.warning(f"{src_dir}/{actor}/{stage}/*wav 没有wav文件，开始初始化")
         if args.force_flag: logger.info("强制重新初始化")
         [tc, cc] = init_from_lib(os.path.basename(src_dir), actor=actor, split_ratio=args.init_split_ratio)
         logger.info(f"{src_dir} {actor} {stage}初始化完毕， 训练集文件数量 {tc}， 测试集文件数量 {cc}")
+        wavs = list(glob.glob('{}/{}/{}/*wav'.format(src_dir, actor, stage))) #Re-Scan
     utt2wav, utt2text, utt2spk, spk2utt = {}, {}, {}, {}
     for wav in tqdm(wavs):
         txt = prepare_normalize_txt(wav)

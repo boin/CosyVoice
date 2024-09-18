@@ -128,6 +128,11 @@ def preprocess(
                 str(force_flag)
             ],
             # capture_output= True
+            env=dict(
+            os.environ,
+            PYTHONIOENCODING="UTF-8",
+            PYTHONPATH="./",
+        ),
         )
         if out.returncode == 0:
             log(f"{state} 数据初始化完成")
@@ -346,16 +351,12 @@ def stop_training(proc_name="torchrun"):
 
 with gr.Blocks() as demo:
     with gr.Group():
-        with gr.Accordion("项目根目录，点此展开项目目录文件规则", open=False):
-            gr.HTML(
-                value=f'<pre>{Path("data/README").read_text()}</pre>', show_label=False
-            )
         project_input_dir = gr.Dropdown(
             choices=ttd.load_lib_projects(),
             value=ttd.load_lib_projects()[0],
             container=True,
-            show_label=False,
-            info="项目数据根目录，在TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Train/目录下会自动新建，训练数据和模型输出都此文件夹下",
+            label="项目根目录",
+            info="项目根目录，会在TeamSpace/TTD-Space/项目/ 目录下寻找",
         )
         with gr.Accordion("高级选项，一般不用管", open=False):
             output_dir = gr.Text(
