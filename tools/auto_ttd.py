@@ -53,7 +53,7 @@ def load_refrence(
         emo (str or int, str or int, str or int]orNone): VAD
         emo_kw : list strings of emo KeyWord
     """
-    print("load refrence called:", project_name, actor, emo, emo_kw)
+    #print("load refrence called:", project_name, actor, emo, emo_kw)
     root_dir = f"./data/{project_name}/{actor}"
     # for compability
     content = Path(f"{root_dir}/output/train/temp1/utt2spk").read_text().splitlines()
@@ -88,11 +88,11 @@ def load_actor(actor: str, project_name):
         人物角色列表
         []
     """
-    print('load actor called:', actor, project_name)
+    #print('load actor called:', actor, project_name)
     root_dir = f"./data/{project_name}"
     # content = Path(f"{root_dir}/output/train/temp1/spk2utt").read_text()
     content = [f.name for f in os.scandir(root_dir) if f.is_dir()]
-    print('loaded content:', content, 'need:', actor)
+    #print('loaded content:', content, 'need:', actor)
     spks = []
     for item in content:
         if item and item.find("_") > -1:
@@ -107,5 +107,5 @@ def load_actor(actor: str, project_name):
         elif item:
             spks.append(item)  # TODO remove later
 
-    print("globing:", content, "got:", spks)
+    #print("globing:", content, "got:", spks)
     return spks

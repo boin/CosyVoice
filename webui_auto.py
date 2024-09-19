@@ -17,36 +17,29 @@ logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
+def download_all_wavs(wavs, hash=hash):
+    logging.debug(f"download all calle with:{wavs}, {hash}")
+    fn = f"/tmp/gradio/{hash}.zip"
+    with ZipFile(fn, "w") as zip:
+        for f in wavs:
+            if not Path(str(wavs[f])).is_file():
+                continue
+            zip.write(wavs[f], f"{f}.wav")
+    zip.close()
+    logging.info(f"zipfile {fn} writed. size {(Path(fn).lstat()).st_size}")
+    return gr.DownloadButton(label="点击下载", value=fn)
+
+
 def load_wav_cache(project, hash):
     # data/240915_有声书_殓葬禁忌/古装_师父,GZJ_灵异/output/outputs/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
     pattern = f"data/{project}/*/*/*/*/{hash}*.wav"
     files = glob.glob(pattern)
     wavs = {}
     for f in files:
-        idx = Path(f).stem.split("-")[1]
+        idx = Path(f).stem
         wavs[idx] = f
     # print(pattern, wavs)
     return wavs
-
-
-def download_all_wavs(wavs:dict, hash):
-    fn = f"/tmp/gradio/{hash}.zip"
-    with ZipFile(fn, "w") as zip:
-        for f in wavs:
-            zip.write(wavs[f], f'{f}.wav')
-    zip.close()
-    return gr.DownloadButton(label="点击下载", value=fn)
-
-
-def upload_textbook(text_url):
-    hash = md5(Path(text_url).read_bytes()).hexdigest()  # save file hash for future use
-    workbook = openpyxl.load_workbook(text_url, read_only=True)
-    rows = [row for row in workbook.active.rows]
-    if not len(rows) > 0:
-        raise gr.Error("Empty document")
-    lines = list(dialog_parser(rows))
-    # print(lines)
-    return lines, hash
 
 
 def start_inference(
@@ -127,15 +120,34 @@ def start_inference(
 
 
 with gr.Blocks(fill_width=True) as demo:
-    lines = gr.State([])
-    hash = gr.State("")
-    wavs = gr.State({})
+    wavs = gr.State({"v": 0})
     rseed = gr.State({})
-    _lines, _hash = upload_textbook("data/Ch001_天命，将至_QC.xlsx")
-    lines.value = _lines
-    hash.value = _hash
     projects = load_projects()
-    wavs.value = load_wav_cache(projects[-1], _hash)
+    hash = ""
+    lines = ""
+
+    def upload_textbook(text_url: str, project: str, wavs: dict):
+        global hash, lines
+        hash = md5(
+            Path(text_url).read_bytes()
+        ).hexdigest()  # save file hash for future use
+        workbook = openpyxl.load_workbook(text_url, read_only=True)
+        rows = [row for row in workbook.active.rows]
+        if not len(rows) > 0:
+            raise gr.Error("Empty document")
+        lines = list(dialog_parser(rows))
+        new_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
+        wavs["v"] += 1
+        for k in new_wavs.keys():
+            wavs[k] = new_wavs[k]
+        return wavs
+
+    wavs.value = upload_textbook(
+        "data/Ch001_天命，将至_QC.xlsx", projects[-1], wavs.value
+    )
+
+    wavs.change(lambda x: print(f"wavs changed.{x}\n"), inputs=wavs)
+    rseed.change(lambda x: print(f"rseed changed.{x}\n"), inputs=rseed)
 
     with gr.Row():
         project = gr.Dropdown(
@@ -149,13 +161,15 @@ with gr.Blocks(fill_width=True) as demo:
             outputs=[project],
         )
         output_dir = gr.Textbox("output", label="输出路径")
-        upload = gr.File(label="上传台词本", file_types=["text"])
-        upload.upload(upload_textbook, inputs=[upload], outputs=[lines, hash])
+        upload = gr.File(label="上传台词本", file_types=["text", ".xlsx"])
+        upload.upload(upload_textbook, inputs=[upload, project, wavs], outputs=[wavs])
 
-    @gr.render(inputs=[hash, lines, wavs])
-    def render_lines(hash, task_list, _wavs):
+    @gr.render(inputs=[wavs])
+    def render_lines(_wavs):
+        task_list = lines
+        print(hash, task_list[0], _wavs, "\n")
         for task in task_list:
-            idx = str(task["id"])
+            idx = f'{hash}-{task["id"]}'
             wav_url = idx in _wavs.keys() and _wavs[idx] or None
             with gr.Row():
                 with gr.Column():
@@ -163,7 +177,6 @@ with gr.Blocks(fill_width=True) as demo:
                         id = gr.Text(
                             f'{hash}-{task["id"]}',
                             visible=False,
-                            key=f'id-{task["id"]}',
                         )
                         gr.Text(
                             f'{task["id"]} {task["actor"]}',
@@ -171,25 +184,21 @@ with gr.Blocks(fill_width=True) as demo:
                             show_label=False,
                             container=False,
                             scale=0,
-                            key=f'meta-{task["id"]}',
                         )
 
                         text = gr.Textbox(
                             task["text"],
                             show_label=False,
                             container=False,
-                            key=f'text-{task["id"]}',
                         )
                         gen_btn = gr.Button(
                             "生成",
                             scale=0,
                             variant="primary",
-                            key=f'gen_btn-{task["id"]}',
                         )
                         download_btn = gr.DownloadButton(
                             label="下载",
                             scale=0,
-                            key=f'dl_btn-{task["id"]}',
                             value=wav_url,
                         )
                         # done_btn.click(lambda: False, None, [s])
@@ -199,7 +208,6 @@ with gr.Blocks(fill_width=True) as demo:
                             f'{task["emo_1"]} {task["emo_2"]} [ V: {task["V"]} A: {task["A"]} D: {task["D"]} ]',
                             show_label=False,
                             container=False,
-                            key=f'vad-{task["id"]}',
                         )
                         actors = load_actor(task["actor"], project.value)
                         # print("actors:", actors)
@@ -208,7 +216,6 @@ with gr.Blocks(fill_width=True) as demo:
                             value=actors[0],
                             show_label=False,
                             container=False,
-                            key=f'actor-{task["id"]}',
                         )
                         refrences = (
                             load_refrence(
@@ -223,7 +230,6 @@ with gr.Blocks(fill_width=True) as demo:
                             value=refrences[0],
                             show_label=False,
                             container=False,
-                            key=f'ref-{task["id"]}',
                         )
                 with gr.Column(scale=0):
                     preview_audio = gr.Audio(
@@ -233,7 +239,6 @@ with gr.Blocks(fill_width=True) as demo:
                         show_share_button=False,
                         sources=[],
                         scale=0,
-                        key=f'prv-{task["id"]}',
                         value=wav_url,
                     )
                 gen_btn.click(
@@ -241,8 +246,9 @@ with gr.Blocks(fill_width=True) as demo:
                     inputs=[project, output_dir, actor, text, ref_ctl, id, rseed, wavs],
                     outputs=[preview_audio, download_btn, wavs],
                 )
+
     dl_all = gr.DownloadButton("一键三连", variant="primary")
-    dl_all.click(download_all_wavs, inputs=[wavs, hash], outputs=[dl_all])
+    dl_all.click(lambda x: download_all_wavs(x, hash), inputs=[wavs], outputs=[dl_all])
 
 
 if __name__ == "__main__":
