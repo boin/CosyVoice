@@ -13,7 +13,7 @@ COPY . /opt/CosyVoice
 WORKDIR /opt/CosyVoice
 
 RUN mkdir -p logs
-RUN echo '#!/bin/bash\npython3 -u webui.py 2>&1 | stdbuf -oL -eL tee -i logs/ui.log &\n  python3 -u webui_train.py 2>&1 | stdbuf -oL -eL tee -i logs/train.log ' >> /opt/CosyVoice/service.sh
+RUN echo '#!/bin/bash\npython3 -u webui_auto.py 2>&1 | stdbuf -oL -eL tee -i logs/auto.log &\n  python3 -u webui_train.py 2>&1 | stdbuf -oL -eL tee -i logs/train.log ' >> /opt/CosyVoice/service.sh
 RUN chmod u+x /opt/CosyVoice/service.sh
 #CMD ["sleep","infinity"]
 CMD ["./service.sh" ]

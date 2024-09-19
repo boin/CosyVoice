@@ -124,7 +124,7 @@ with gr.Blocks(fill_width=True) as demo:
     rseed = gr.State({})
     projects = load_projects()
     hash = ""
-    lines = ""
+    lines = []
 
     def upload_textbook(text_url: str, project: str, wavs: dict):
         global hash, lines
@@ -142,9 +142,9 @@ with gr.Blocks(fill_width=True) as demo:
             wavs[k] = new_wavs[k]
         return wavs
 
-    wavs.value = upload_textbook(
-        "data/Ch001_天命，将至_QC.xlsx", projects[-1], wavs.value
-    )
+    # wavs.value = upload_textbook(
+    #     "data/Ch001_天命，将至_QC.xlsx", projects[-1], wavs.value
+    # )
 
     wavs.change(lambda x: print(f"wavs changed.{x}\n"), inputs=wavs)
     rseed.change(lambda x: print(f"rseed changed.{x}\n"), inputs=rseed)
@@ -167,7 +167,7 @@ with gr.Blocks(fill_width=True) as demo:
     @gr.render(inputs=[wavs])
     def render_lines(_wavs):
         task_list = lines
-        print(hash, task_list[0], _wavs, "\n")
+        #print(hash, task_list[0], _wavs, "\n")
         for task in task_list:
             idx = f'{hash}-{task["id"]}'
             wav_url = idx in _wavs.keys() and _wavs[idx] or None
