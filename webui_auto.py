@@ -1,55 +1,88 @@
+import glob
 import json
-import random
-import subprocess
-from pathlib import Path
-from tools.emo_dialog_parser import dialog_parser
-from tools.auto_ttd import load_refrence, load_actor, load_projects
-
 import logging
+import os
+import subprocess
+from hashlib import md5
+from pathlib import Path
+from zipfile import ZipFile
+
 import gradio as gr
+import openpyxl
+
+from tools.auto_ttd import load_actor, load_projects, load_refrence
+from tools.emo_dialog_parser import dialog_parser
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
+def load_wav_cache(project, hash):
+    # data/240915_有声书_殓葬禁忌/古装_师父,GZJ_灵异/output/outputs/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
+    pattern = f"data/{project}/*/*/*/*/{hash}*.wav"
+    files = glob.glob(pattern)
+    wavs = {}
+    for f in files:
+        idx = Path(f).stem.split("-")[1]
+        wavs[idx] = f
+    # print(pattern, wavs)
+    return wavs
+
+
+def download_all_wavs(wavs:dict, hash):
+    fn = f"/tmp/gradio/{hash}.zip"
+    with ZipFile(fn, "w") as zip:
+        for f in wavs:
+            zip.write(wavs[f], f'{f}.wav')
+    zip.close()
+    return gr.DownloadButton(label="点击下载", value=fn)
+
+
 def upload_textbook(text_url):
-    texts = Path(text_url).read_text().splitlines()
-    if not len(texts) > 0:
-        return "Empty lines"
-    lines = []
-    for text in texts:
-        if not text:
-            continue
-        text = dialog_parser(text)
-        lines.append(text)
-    return lines
+    hash = md5(Path(text_url).read_bytes()).hexdigest()  # save file hash for future use
+    workbook = openpyxl.load_workbook(text_url, read_only=True)
+    rows = [row for row in workbook.active.rows]
+    if not len(rows) > 0:
+        raise gr.Error("Empty document")
+    lines = list(dialog_parser(rows))
+    # print(lines)
+    return lines, hash
 
 
-def start_inference(project_name, output_path, text, voice, id, r_seed):
+def start_inference(
+    project_name, output_path, actor, text, voice, id: str, r_seed, wavs
+):
+    """开始推理
+    Args:
+        project_name (str): 项目名称
+        output_path (str): 输出路径
+        text (str): 推理文本
+        voice (str): 选定音色
+        id (str): uniqid
+        r_seed (str): 随机种子
+    """
+    # 240915_有声书_殓葬禁忌  旁白_脸红_002_507828_并且在峨眉危难之际自动出现，化解危机。  Says: 我，是一名殓葬师！ {}
     if not text:
         raise gr.Error("no text.")
     if not voice:
         raise gr.Error("no voice.")
-    mode = "zero-shot"
+    mode = "zero_shot"
     epoch = 0
+    r_seed = r_seed[id] if id in r_seed else ""
     pre_model_path = Path("pretrained_models/CosyVoice-300M")
-    output_path = Path(f"data/{project_name}/{output_path})")
+    output_path = Path(f"data/{project_name}/{actor}/{output_path}")
     train_list = output_path / "train" / "temp2" / "data.list"
     utt2data_list = Path(train_list).with_name("utt2data.list")
     llm_model = output_path / "models" / f"epoch_{epoch}_whole.pt"
     flow_model = pre_model_path / "flow.pt"
     hifigan_model = pre_model_path / "hift.pt"
-    res_dir = output_path / "outputs" / str(random.randint(1e16, 1e17))
+    res_dir = output_path / "outputs" / id.rpartition("-")[0]
     res_dir.mkdir(exist_ok=True, parents=True)
-    voice = voice.split(" - ")[1]  # spkr1 - voice1 => voice1
-    if not voice:
-        raise "empty voice."
     json_path = str(Path(res_dir) / "tts_text.json")
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
-
     logging.info(
-        f"call cosyvoice/bin/inference.py {mode} => {voice} says: {text} with r_seed {r_seed}"
+        f"call cosyvoice/bin/inference.py {project_name} {mode} => {actor} {voice} says: {text} with r_seed {r_seed}, result to {res_dir}"
     )
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
     cmd = [
@@ -77,22 +110,39 @@ def start_inference(project_name, output_path, text, voice, id, r_seed):
         str(res_dir),
         "--rseed",
         str(r_seed),
+        "--file_name",
+        str(id),
     ]
-    subprocess.run(cmd)
-    output_path = str(Path(res_dir) / f"{voice}_0.wav")
-    return output_path, gr.Button(link=output_path, variant="stop")
+    subprocess.run(
+        cmd,
+        env=dict(
+            os.environ,
+            PYTHONIOENCODING="UTF-8",
+            PYTHONPATH="./:./third_party/Matcha-TTS:./third_party/AcademiCodec",
+        ),
+    )
+    output_path = str(Path(res_dir) / f"{id}.wav")
+    wavs[id.split("-")[1]] = output_path
+    return output_path, gr.Button(link=output_path, variant="stop"), wavs
 
 
 with gr.Blocks(fill_width=True) as demo:
-    s = gr.State(upload_textbook("data/第一章 天命，将至_final.txt"))
-    projects = load_projects()
-    project_name = gr.State(projects[-1] if len(projects) > 0 else "")
+    lines = gr.State([])
+    hash = gr.State("")
+    wavs = gr.State({})
     rseed = gr.State({})
-    # print(s)
+    _lines, _hash = upload_textbook("data/Ch001_天命，将至_QC.xlsx")
+    lines.value = _lines
+    hash.value = _hash
+    projects = load_projects()
+    wavs.value = load_wav_cache(projects[-1], _hash)
 
     with gr.Row():
-        project = gr.Dropdown(choices=projects, value=project_name.value, label="项目名称")
-        project.change(lambda x: x, project, project_name)
+        project = gr.Dropdown(
+            choices=projects,
+            value=projects[-1] if len(projects) > 0 else "",
+            label="项目名称",
+        )
         gr.Button("刷新").click(
             lambda: {"__type__": "update", "choices": load_projects()},
             inputs=[],
@@ -100,60 +150,72 @@ with gr.Blocks(fill_width=True) as demo:
         )
         output_dir = gr.Textbox("output", label="输出路径")
         upload = gr.File(label="上传台词本", file_types=["text"])
-        upload.upload(upload_textbook, inputs=[upload], outputs=[s])
+        upload.upload(upload_textbook, inputs=[upload], outputs=[lines, hash])
 
-    @gr.render(inputs=s)
-    def render_lines(task_list):
-        # print(task_list)
-        # complete = [task for task in task_list if task["complete"]]
-        # incomplete = [task for task in task_list if not task["complete"]]
-        # gr.Markdown(f"### Incomplete Lines ({len(incomplete)})")
+    @gr.render(inputs=[hash, lines, wavs])
+    def render_lines(hash, task_list, _wavs):
         for task in task_list:
+            idx = str(task["id"])
+            wav_url = idx in _wavs.keys() and _wavs[idx] or None
             with gr.Row():
                 with gr.Column():
                     with gr.Row():
-                        id = gr.Text(task["id"], render=False)
+                        id = gr.Text(
+                            f'{hash}-{task["id"]}',
+                            visible=False,
+                            key=f'id-{task["id"]}',
+                        )
                         gr.Text(
                             f'{task["id"]} {task["actor"]}',
                             label="metadata",
                             show_label=False,
                             container=False,
                             scale=0,
+                            key=f'meta-{task["id"]}',
                         )
-
-                        # gr.Text(task['id'], show_label=False, container=False, scale=0)
-                        # gr.Text(task['actor'], show_label=False, container=False, scale=0)
-                        # gr.Text(f"{task['emo_chn']} {task['emo_eng']}", show_label=False, container=False, scale=0)
-                        # gr.Text(task['id'])
-                        # gr.Text(task['id'])
 
                         text = gr.Textbox(
-                            task["text"], show_label=False, container=False
+                            task["text"],
+                            show_label=False,
+                            container=False,
+                            key=f'text-{task["id"]}',
                         )
-                        gen_btn = gr.Button("生成", scale=0, variant="primary")
-                        download_btn = gr.Button("下载", scale=0)
+                        gen_btn = gr.Button(
+                            "生成",
+                            scale=0,
+                            variant="primary",
+                            key=f'gen_btn-{task["id"]}',
+                        )
+                        download_btn = gr.DownloadButton(
+                            label="下载",
+                            scale=0,
+                            key=f'dl_btn-{task["id"]}',
+                            value=wav_url,
+                        )
                         # done_btn.click(lambda: False, None, [s])
 
                     with gr.Row():
                         gr.Text(
-                            f'{task["emo_chn"]}  [ V: {task["V"]} A: {task["A"]} D: {task["D"]} ]',
+                            f'{task["emo_1"]} {task["emo_2"]} [ V: {task["V"]} A: {task["A"]} D: {task["D"]} ]',
                             show_label=False,
                             container=False,
+                            key=f'vad-{task["id"]}',
                         )
-                        actors = load_actor(task["actor"], project_name.value)
-                        print("actors:", actors)
-                        gr.Dropdown(
+                        actors = load_actor(task["actor"], project.value)
+                        # print("actors:", actors)
+                        actor = gr.Dropdown(
                             choices=actors,
                             value=actors[0],
                             show_label=False,
                             container=False,
+                            key=f'actor-{task["id"]}',
                         )
                         refrences = (
                             load_refrence(
-                                project_name.value,
-                                actors[0], #use parsed actorname than original
+                                project.value,
+                                actors[0],  # use parsed actorname than original
                                 [task["V"], task["A"], task["D"]],
-                                emo_kw=task["emo_chn"],
+                                emo_kw=[task["emo_1"], task["emo_2"]],
                             ),
                         )
                         ref_ctl = gr.Dropdown(
@@ -161,6 +223,7 @@ with gr.Blocks(fill_width=True) as demo:
                             value=refrences[0],
                             show_label=False,
                             container=False,
+                            key=f'ref-{task["id"]}',
                         )
                 with gr.Column(scale=0):
                     preview_audio = gr.Audio(
@@ -170,16 +233,17 @@ with gr.Blocks(fill_width=True) as demo:
                         show_share_button=False,
                         sources=[],
                         scale=0,
+                        key=f'prv-{task["id"]}',
+                        value=wav_url,
                     )
                 gen_btn.click(
                     start_inference,
-                    inputs=[project_name, output_dir, text, ref_ctl, id, rseed],
-                    outputs=[preview_audio, download_btn],
+                    inputs=[project, output_dir, actor, text, ref_ctl, id, rseed, wavs],
+                    outputs=[preview_audio, download_btn, wavs],
                 )
-                # download_btn.click(lambda: gr.Info("WIP"))
-
-        gr.Button("一键三连", variant="primary").click(lambda: None)
+    dl_all = gr.DownloadButton("一键三连", variant="primary")
+    dl_all.click(download_all_wavs, inputs=[wavs, hash], outputs=[dl_all])
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=9883)
+    demo.launch(server_name="0.0.0.0", server_port=9884)

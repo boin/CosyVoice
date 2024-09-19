@@ -10,10 +10,12 @@ import psutil
 from gradio_log import Log
 
 import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
 
 def data_path(path, base, actor):
     return Path("./data") / base / actor / path
@@ -42,17 +44,20 @@ def generate_seed():
     seed = random.randint(1, 100000000)
     return {"__type__": "update", "value": seed}
 
+
 def refresh_lib_projects(project_input_dir):
     return gr.Dropdown(choices=ttd.load_lib_projects())
 
+
 def refresh_lib_actors(project_input_dir):
     list = ttd.load_lib_prj_actors(project_input_dir)
-    #print(list)
+    # print(list)
     return {"__type__": "update", "choices": list, "value": list[0]}
 
-def refresh_voice(project_input_dir, output_path):
+
+def refresh_voice(project_input_dir, output_path, actor):
     content = (
-        data_path(output_path, project_input_dir) / "train" / "temp1" / "utt2spk"
+        data_path(output_path, project_input_dir, actor) / "train" / "temp1" / "utt2spk"
     ).read_text()
     voices = []
     for item in content.split("\n"):
@@ -61,8 +66,9 @@ def refresh_voice(project_input_dir, output_path):
             voices.append(f"{spkr} - {voice}")
     return gr.Dropdown(choices=voices)
 
-#TODO refractor to laod ttd_lib file
-def load_refrence_wav(refrence_name, project_input_dir):
+
+# TODO refractor to load ttd_lib file
+def load_refrence_wav(refrence_name, project_input_dir, actor):
     if not project_input_dir:
         return
     root_dir = (
@@ -71,8 +77,8 @@ def load_refrence_wav(refrence_name, project_input_dir):
         or project_input_dir
     )
     [spkr, voice] = refrence_name.split(" - ")
-    path = data_path(f"{spkr}/train", root_dir) / f"{voice}.wav"
-    return os.path.realpath(path)
+    path = data_path(f"{spkr}/train", root_dir, actor) / f"{voice}.wav"
+    return path
 
 
 def load_mix_ref(pt_dir):
@@ -89,9 +95,12 @@ def load_mix_ref(pt_dir):
     return gr.Dropdown(choices=voices)
 
 
-def preprocess(
-    project_input_dir, output_path, actor, split_ratio, force_flag
-):
+def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
+
+    #check src first
+    if ttd.check_proj_actor_wavs(project_input_dir, actor) < 1:
+        raise gr.Error('该角色没有可训练的文件')
+
     for state, input_path in zip(
         ["train", "val"],
         [
@@ -125,14 +134,14 @@ def preprocess(
                 "--init_split_ratio",
                 str(split_ratio),
                 "--force_flag",
-                str(force_flag)
+                str(force_flag),
             ],
             # capture_output= True
             env=dict(
-            os.environ,
-            PYTHONIOENCODING="UTF-8",
-            PYTHONPATH="./",
-        ),
+                os.environ,
+                PYTHONIOENCODING="UTF-8",
+                PYTHONPATH="./",
+            ),
         )
         if out.returncode == 0:
             log(f"{state} 数据初始化完成")
@@ -267,6 +276,7 @@ def inference(
     epoch,
     pre_model_path,
     text,
+    actor,
     voice,
     seed,
     spk_mix,
@@ -278,7 +288,7 @@ def inference(
         raise gr.Error("no text.")
     if not voice:
         raise gr.Error("no voice.")
-    output_path = data_path(output_path, project_input_dir)
+    output_path = data_path(output_path, project_input_dir, actor)
     train_list = os.path.join(output_path, "train", "temp2", "data.list")
     utt2data_list = Path(train_list).with_name("utt2data.list")
     llm_model = os.path.join(output_path, "models", f"epoch_{epoch}_whole.pt")
@@ -293,12 +303,14 @@ def inference(
     mix_file = mix_file and os.path.dirname(mix_file) or ""
     mix_rate = f"{w1}-{w2}"
     if spk_mix:
-        mix_file = os.path.realpath( f"{mix_file}/../train/temp1/utt2embedding.pt")
+        mix_file = os.path.realpath(f"{mix_file}/../train/temp1/utt2embedding.pt")
     json_path = str(Path(res_dir) / "tts_text.json")
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
 
-    logging.info(f"call cosyvoice/bin/inference.py {mode} => {voice} says: {text} with r_seed {seed}")
+    logging.info(
+        f"call cosyvoice/bin/inference.py {mode} => {voice} says: {text} with r_seed {seed}"
+    )
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
     cmd = [
         r"python3",
@@ -332,7 +344,14 @@ def inference(
         "--mix_rate",
         mix_rate,
     ]
-    subprocess.run(cmd)
+    subprocess.run(
+        cmd,
+        env=dict(
+            os.environ,
+            PYTHONIOENCODING="UTF-8",
+            PYTHONPATH="./:./third_party/Matcha-TTS:./third_party/AcademiCodec",
+        ),
+    )
     output_path = str(Path(res_dir) / f"{voice}_0.wav")
     return output_path
 
@@ -350,7 +369,7 @@ def stop_training(proc_name="torchrun"):
 
 
 with gr.Blocks() as demo:
-    with gr.Group():
+    with gr.Row():
         project_input_dir = gr.Dropdown(
             choices=ttd.load_lib_projects(),
             value=ttd.load_lib_projects()[0],
@@ -358,36 +377,36 @@ with gr.Blocks() as demo:
             label="项目根目录",
             info="项目根目录，会在TeamSpace/TTD-Space/项目/ 目录下寻找",
         )
-        with gr.Accordion("高级选项，一般不用管", open=False):
-            output_dir = gr.Text(
-                label="模型输出文件夹",
-                value="output",
-                info="预处理与训练最终会输出在项目根目录的本文件夹下，没有会自动新建，一般不用改",
-            )
-            pretrained_model_path = gr.Text(
-                "pretrained_models/CosyVoice-300M",
-                label="预训练模型文件夹",
-                info="可选 300M-SFT/330M-Insturct 一般不用改",
-            )
+        actor = gr.Dropdown(
+            choices=ttd.load_lib_prj_actors(project_input_dir.value),
+            label="欲训练角色",
+            info="现在是一个一个角色单独训练",
+            interactive=True,
+        )
+        gr.Button(
+            value="刷新项目角色",
+        ).click(refresh_lib_actors, [project_input_dir], [actor])
+    with gr.Accordion("高级选项，一般不用管", open=False):
+        output_dir = gr.Text(
+            label="模型输出文件夹",
+            value="output",
+            info="预处理与训练最终会输出在项目根目录的本文件夹下，没有会自动新建，一般不用改",
+        )
+        pretrained_model_path = gr.Text(
+            "pretrained_models/CosyVoice-300M",
+            label="预训练模型文件夹",
+            info="可选 300M-SFT/330M-Insturct 一般不用改",
+        )
     with gr.Tab("训练"):
         with gr.Row():
-            actor = gr.Dropdown(
-                choices=[],
-                label="欲训练角色",
-                info="现在是一个一个角色单独训练",
-                interactive=True
+            split_ratio = gr.Radio(
+                choices=[("1:1", 50), ("6:4", 60), ("7:3", 70)],
+                label="预料训练集/验证集分配比例",
+                value=50,
             )
-            
-            gr.Button(
-                value="刷新角色",
-            ).click(refresh_lib_actors, [project_input_dir], [actor])
-            split_ratio = gr.Radio(choices=[
-                ("1:1", 50),("6:4", 60),("7:3", 70)
-            ], label="预料训练集/验证集分配比例",value=50)
-
             re_init = gr.Checkbox(
                 label="重新分配语料",
-                info="如果语料库中此角色的语料有更新，或者调整了分配比例，那么就需要勾选此选项重新预处理"
+                info="如果语料库中此角色的语料有更新，或者调整了分配比例，那么就需要勾选此选项重新预处理",
             )
         preprocess_btn = gr.Button(
             "开始预处理（提取训练集音色数据，如果只是要新增推理的音色，只点这个就行了）",
@@ -455,6 +474,7 @@ with gr.Blocks() as demo:
                     file_count="single",
                     root_dir="./data",
                     glob="*/*.pt",
+                    interactive=False,
                 )
                 spk_mix = gr.Dropdown(
                     label="选择融合音色",
@@ -476,24 +496,20 @@ with gr.Blocks() as demo:
     Log(
         get_docker_logs(), dark=True, xterm_font_size=12, render=bool(get_docker_logs())
     )
-    project_input_dir.change(refresh_lib_actors, inputs=[project_input_dir], outputs=[actor])
-    voices.change(
-        load_refrence_wav, inputs=[voices, project_input_dir], outputs=preview
+    project_input_dir.change(
+        refresh_lib_actors, inputs=[project_input_dir], outputs=[actor]
     )
-    spk_mix.change(load_refrence_wav, inputs=[spk_mix, mix_file], outputs=preview2)
+    voices.change(
+        load_refrence_wav, inputs=[voices, project_input_dir, actor], outputs=preview
+    )
+    spk_mix.change(load_refrence_wav, inputs=[spk_mix, mix_file, actor], outputs=preview2)
 
     seed_button.click(generate_seed, inputs=[], outputs=seed)
     mix_file.change(load_mix_ref, inputs=[mix_file], outputs=[spk_mix])
 
     preprocess_btn.click(
         preprocess,
-        inputs=[
-            project_input_dir,
-            output_dir,
-            actor,
-            split_ratio,
-            re_init 
-        ],
+        inputs=[project_input_dir, output_dir, actor, split_ratio, re_init],
         outputs=status,
     )
     train_btn.click(
@@ -517,6 +533,7 @@ with gr.Blocks() as demo:
             epoch,
             pretrained_model_path,
             text,
+            actor,
             voices,
             seed,
             spk_mix,
@@ -526,7 +543,9 @@ with gr.Blocks() as demo:
         ],
         outputs=out_audio,
     )
-    refresh.click(refresh_voice, inputs=[project_input_dir, output_dir], outputs=voices)
+    refresh.click(
+        refresh_voice, inputs=[project_input_dir, output_dir, actor], outputs=voices
+    )
     stop_btn.click(stop_training, outputs=[status])
 
 demo.launch(server_name="0.0.0.0", server_port=9883, inbrowser=False)

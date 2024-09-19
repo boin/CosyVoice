@@ -53,6 +53,7 @@ def get_args():
         "--mode", default="sft", choices=["sft", "zero_shot"], help="inference mode"
     )
     parser.add_argument("--result_dir", required=True, help="asr result file")
+    parser.add_argument("--file_name", required=False, help="result file name")
     parser.add_argument("--rseed", required=False, help="setup a ramdon seed")
     parser.add_argument("--mix", required=False, help="another voice to mix")
     parser.add_argument(
@@ -78,6 +79,7 @@ def main():
     gpu=0,                                                                   # 使用第一块GPU
     mode='zero_shot',                                                        # 推理模式 zero_shot
     result_dir='data/LHB_0.5MIN_ID30/output/outputs'                         # 输出地址
+    file_name=''                                                             # 文件名称
     rssed=234324231                                                          # 随机数
     mix_pt='output/train/temp1/utt2embedding.pt'                             # 某一条语料音色混合的PT文件
     mix = 'utt'                                                              # 音色混合的音色名
@@ -194,8 +196,8 @@ def main():
             #testing
             out_audio = model_output["tts_speech"]
             # 以下是把数据存成音频文件（wav.scp），不重要了。
-            tts_key = "{}_{}".format(utts[0], tts_index[0])
-            tts_fn = os.path.join(args.result_dir, "{}.wav".format(tts_key))
+            tts_key = args.file_name or f"{utts[0]}_{tts_index[0]}"
+            tts_fn = os.path.join(args.result_dir, f"{tts_key}.wav")
             torchaudio.save(tts_fn, out_audio, sample_rate=22050)
             #normalize
             data, sr = sf.read(tts_fn) # load audio
@@ -205,10 +207,10 @@ def main():
             # loudness normalize audio to -25 dB LUFS
             out_audio = pyln.normalize.loudness(data, loudness, -25.0)
             sf.write(tts_fn, out_audio, sr)
-            f.write("{} {}\n".format(tts_key, tts_fn))
+            f.write(f"{tts_key} {tts_fn}\n")
             f.flush()
     f.close()
-    logging.info("Result wav.scp saved in {}".format(fn))
+    logging.info(f"Result wav.scp saved in {fn}")
 
 
 if __name__ == "__main__":

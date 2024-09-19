@@ -25,7 +25,7 @@ tensorboard==2.14.0
 torch==2.0.1
 torchaudio==2.0.2
 wget==3.2
-
+openpyxl
 PySoundFile
 pypinyin
 jieba

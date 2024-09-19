@@ -35,9 +35,9 @@ def findNearestVAD(vad: [str or int, str or int, str or int], voices: [str], cou
 
     # print 10 nearest points to the chosen one
     # print(list(zip(tree[ndx[:10]], d[ndx[:10]])))
-    print(f"与 VAD: {vad} 最相近的{count}个 VAD : ", vad_tree[ndx[:count]])
+    logging.debug(f"与 VAD: {vad} 最相近的{count}个 VAD : ", vad_tree[ndx[:count]])
     result = [tree_obj[tuple(idx)] for idx in vad_tree[ndx[:count]].tolist()]
-    logging.info(result)
+    logging.debug(result)
     return result
 
 def init_vad_tree(voice_list):

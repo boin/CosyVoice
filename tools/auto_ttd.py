@@ -1,4 +1,5 @@
 import os
+import glob
 from pathlib import Path
 
 from tools.vad import findNearestVAD
@@ -26,6 +27,9 @@ def load_lib_prj_actors(project_name, root_dir=TTD_LIB):
     # print(lib_actors)
     return lib_actors
 
+def check_proj_actor_wavs(project_name, actor):
+    count = len(glob.glob(str(TTD_LIB / project_name / LIB_SUB / actor) + '/*.wav'))
+    return count
 
 def get_uut_by_name(project_name, actor, exact=False):
     for dir in [d.name for d in os.scandir(f"./data/{project_name}") if d.is_dir()]:
@@ -34,12 +38,11 @@ def get_uut_by_name(project_name, actor, exact=False):
     if not exact:  # 非精确返回最后一个结果，作为debug
         return dir
 
-
 def load_refrence(
     project_name,
     actor: str,
     emo: [str or int, str or int, str or int] or None,
-    emo_kw: str or None,
+    emo_kw: [str]
 ):
     """加载最接近的参考音，
         1. 使用VAD筛选
@@ -48,7 +51,7 @@ def load_refrence(
     Args:
         actor (str): 古装_旁白,ZYH,_灵异
         emo (str or int, str or int, str or int]orNone): VAD
-        emo_kw :string of emo KeyWord
+        emo_kw : list strings of emo KeyWord
     """
     print("load refrence called:", project_name, actor, emo, emo_kw)
     root_dir = f"./data/{project_name}/{actor}"
@@ -61,15 +64,14 @@ def load_refrence(
         search_content = findNearestVAD(vad, content, 20)
         content = search_content or content
     voices = []
-    exact_voice = {}  # 匹配keyword的音色,距离是key，值是index
+    exact_voice = []
     for item in content:
         if item:
             # KeyWord match
             [voice, spkr] = item.split(" ")
             voices.append(voice)
-            index = voice.split("_")[2].find(emo_kw)
-            if index > -1:
-                exact_voice[index] = voice
+            if any(kw in voice.split("_")[2] for kw in emo_kw):
+                exact_voice.append(voice)
     return list(exact_voice) or voice
 
 
