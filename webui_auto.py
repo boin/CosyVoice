@@ -115,8 +115,8 @@ def start_inference(
         ),
     )
     output_path = str(Path(res_dir) / f"{id}.wav")
-    wavs[id.split("-")[1]] = output_path
-    return output_path, gr.Button(link=output_path, variant="stop"), wavs
+    wavs[id] = output_path
+    return output_path, gr.DownloadButton(output_path, variant="stop"), wavs
 
 
 with gr.Blocks(fill_width=True) as demo:
