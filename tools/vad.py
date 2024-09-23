@@ -65,9 +65,10 @@ def findNearestKW(target, strings):
         strings (list[str]): 匹配数组
     """
     def char_intersection_count(s1, s2):
-        return len(set(s1) & set(s2))
+        return len(set(s2) & set(s1.split("_")[1])) #biz_logic
 
     def order_match_score(s1, s2):
+        s1 = s1.split("_")[1] #biz_logic
         score = 0
         index = 0
         for char in s1:

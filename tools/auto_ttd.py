@@ -73,7 +73,7 @@ def load_refrence(
         # vad find 2 matches
         vad_content = findNearestVAD(vad, content, 1)
     voices = vad_content
-    voices.append(findNearestKW(emo_kw, [c.split("_")[1] for c in content]))
+    voices.append(findNearestKW(emo_kw, content))
     return voices
 
 
