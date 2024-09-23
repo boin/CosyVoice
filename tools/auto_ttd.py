@@ -30,7 +30,9 @@ def load_lib_prj_actors(project_name, root_dir=TTD_LIB):
 
 
 def check_proj_actor_wavs(project_name, actor):
-    count = len(glob.glob(str(TTD_LIB / project_name / LIB_SUB / actor) + "/*.wav"))
+    count = len(
+        glob.glob(str(Path(TTD_LIB) / project_name / LIB_SUB / actor) + "/*.wav")
+    )
     return count
 
 
