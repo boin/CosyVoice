@@ -164,8 +164,9 @@ with gr.Blocks(fill_width=True) as demo:
         upload = gr.File(label="上传台词本", file_types=["text", ".xlsx"])
         upload.upload(upload_textbook, inputs=[upload, project, wavs], outputs=[wavs])
 
-    @gr.render(inputs=[wavs])
-    def render_lines(_wavs):
+    @gr.render(inputs=[wavs, project])
+    def render_lines(_wavs, _project):
+        print('re-render wavs version with active project:', _project, _wavs['v'])
         task_list = lines
         #print(hash, task_list[0], _wavs, "\n")
         for task in task_list:
@@ -209,7 +210,7 @@ with gr.Blocks(fill_width=True) as demo:
                             show_label=False,
                             container=False,
                         )
-                        actors = load_actor(task["actor"], project.value)
+                        actors = load_actor(task["actor"], _project)
                         # print("actors:", actors)
                         actor = gr.Dropdown(
                             choices=actors,
@@ -219,7 +220,7 @@ with gr.Blocks(fill_width=True) as demo:
                         )
                         refrences = (
                             load_refrence(
-                                project.value,
+                                _project,
                                 actors[0],  # use parsed actorname than original
                                 [task["V"], task["A"], task["D"]],
                                 emo_kw=[task["emo_1"], task["emo_2"]],

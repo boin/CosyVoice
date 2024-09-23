@@ -23,10 +23,11 @@ KDTree.search(tree_obj.keys(), [v, a, d])
 # 取得最相近的VAD count结果
 def findNearestVAD(vad: [str or int, str or int, str or int], voices: [str], count=10):
     tree_obj = init_vad_tree(voices)  # text.splitlines()
-    #print(tree_obj)
+    # print(tree_obj)
     vad_tree = np.array(list(tree_obj.keys()))
-    #print(vad_tree)
-    if len(vad_tree) < 1: return []  # noqa: E701
+    # print(vad_tree)
+    if len(vad_tree) < 1:
+        return []
     vad = [int(vad[0]), int(vad[1]), int(vad[2])]
     logging.debug("vad:", vad)
 
@@ -40,19 +41,59 @@ def findNearestVAD(vad: [str or int, str or int, str or int], voices: [str], cou
     logging.debug(result)
     return result
 
+
 def init_vad_tree(voice_list):
     #  旁白_震惊_3_154799_将那手下撞飞十米之后，才堪堪落地。
     pattern = re.compile(r".+_(?P<vad>\d{6})_.+")
     tree_obj = {}
     for voice in voice_list:
         if voice:
-            #logging.debug(voice, pattern.match(voice).all)
+            # logging.debug(voice, pattern.match(voice).all)
             vad = pattern.match(voice) and pattern.match(voice).group(1)  # \d6 vad
             if vad:
                 arr_idx = tuple(int(vad[n : n + 2]) for n in range(0, len(vad), 2))
                 # print(arr_idx, type(arr_idx))
                 tree_obj[arr_idx] = voice
     return tree_obj
+
+
+def findNearestKW(target, strings):
+    """
+        首先计算每个字符串与目标字符串的交集大小，然后筛选出交集大小相同的字符串，最后计算这些字符串的顺序匹配分数，返回分数最高的字符串。
+    Args:
+        target (str): 待匹配的keyword
+        strings (list[str]): 匹配数组
+    """
+    def char_intersection_count(s1, s2):
+        return len(set(s1) & set(s2))
+
+    def order_match_score(s1, s2):
+        score = 0
+        index = 0
+        for char in s1:
+            if char in s2[index:]:
+                score += 1
+                index = s2.index(char, index) + 1  # Move index to next position
+        return score
+
+    # Step 1: Calculate intersection counts
+    intersection_counts = {s: char_intersection_count(s, target) for s in strings}
+
+    # Step 2: Find max intersection count
+    max_count = max(intersection_counts.values())
+    candidates = [s for s, count in intersection_counts.items() if count == max_count]
+
+    # Step 3: Find the best match based on order match score
+    best_match = None
+    best_score = -1
+
+    for candidate in candidates:
+        score = order_match_score(candidate, target)
+        if score > best_score:
+            best_score = score
+            best_match = candidate
+
+    return best_match
 
 
 if __name__ == "__main__":
