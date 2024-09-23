@@ -134,7 +134,7 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
                 "--init_split_ratio",
                 str(split_ratio),
                 "--force_flag",
-                str(force_flag),
+                str(force_flag), #str True / False
             ],
             # capture_output= True
             env=dict(
@@ -405,6 +405,8 @@ with gr.Blocks() as demo:
                 value=50,
             )
             re_init = gr.Checkbox(
+                value=True,
+                interactive=False,
                 label="重新分配语料",
                 info="如果语料库中此角色的语料有更新，或者调整了分配比例，那么就需要勾选此选项重新预处理",
             )

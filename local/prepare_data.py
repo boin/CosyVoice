@@ -44,7 +44,7 @@ def init_from_lib(prj_name, actor, split_ratio):
 def prepare_normalize_txt(file):
     txt_path = file.rpartition(".wav")[0] + ".normalized.txt"
     if not os.path.exists(txt_path):
-        logger.warning('{} do not exsist'.format(txt_path))
+        #logger.warning('{} do not exsist'.format(txt_path))
         meta = os.path.basename(file).rpartition('.wav')[0].split("_")
         if len(meta) != 5:
             raise gr.Error(f"invalid file meta: {file}")
@@ -61,9 +61,12 @@ def main():
 
     wavs = list(glob.glob('{}/{}/{}/*wav'.format(src_dir, actor, stage)))
     #./data/240915_有声书_殓葬禁忌/古装_师父,GZJ_灵异/train/旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
-    if len(wavs) < 1 or args.force_flag:
-        if len(wavs) < 1: logger.warning(f"{src_dir}/{actor}/{stage}/*wav 没有wav文件，开始初始化")
-        if args.force_flag: logger.info("强制重新初始化")
+    if len(wavs) < 1 or args.force_flag == "True":
+        if len(wavs) < 1: 
+            logger.warning(f"{src_dir}/{actor}/{stage}/*wav 没有wav文件，开始初始化")
+        if args.force_flag:
+            logger.warning("强制重新初始化")
+            shutil.rmtree(Path(f"{src_dir}/{actor}/{stage}"), ignore_errors=True)
         [tc, cc] = init_from_lib(os.path.basename(src_dir), actor=actor, split_ratio=args.init_split_ratio)
         logger.info(f"{src_dir} {actor} {stage}初始化完毕， 训练集文件数量 {tc}， 测试集文件数量 {cc}")
         wavs = list(glob.glob('{}/{}/{}/*wav'.format(src_dir, actor, stage))) #Re-Scan
@@ -106,7 +109,7 @@ if __name__ == "__main__":
     parser.add_argument('--init_split_ratio',
                         type=int)
     parser.add_argument('--force_flag',
-                        type=bool)
+                        type=str)
 
     args = parser.parse_args()
     main()

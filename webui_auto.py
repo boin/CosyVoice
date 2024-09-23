@@ -166,9 +166,9 @@ with gr.Blocks(fill_width=True) as demo:
 
     @gr.render(inputs=[wavs, project])
     def render_lines(_wavs, _project):
-        print('re-render wavs version with active project:', _project, _wavs['v'])
+        print("re-render wavs version with active project:", _project, _wavs["v"])
         task_list = lines
-        #print(hash, task_list[0], _wavs, "\n")
+        # print(hash, task_list[0], _wavs, "\n")
         for task in task_list:
             idx = f'{hash}-{task["id"]}'
             wav_url = idx in _wavs.keys() and _wavs[idx] or None
@@ -218,13 +218,11 @@ with gr.Blocks(fill_width=True) as demo:
                             show_label=False,
                             container=False,
                         )
-                        refrences = (
-                            load_refrence(
-                                _project,
-                                actors[0],  # use parsed actorname than original
-                                [task["V"], task["A"], task["D"]],
-                                emo_kw=[task["emo_1"], task["emo_2"]],
-                            ),
+                        refrences = load_refrence(
+                            _project,
+                            actors[0],  # use parsed actorname than original
+                            [task["V"], task["A"], task["D"]],
+                            emo_kw=f'{task["emo_1"]}{task["emo_2"]}',
                         )
                         ref_ctl = gr.Dropdown(
                             choices=refrences,

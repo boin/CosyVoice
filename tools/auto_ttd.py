@@ -48,7 +48,7 @@ def load_refrence(
     project_name,
     actor: str,
     emo: [str or int, str or int, str or int] or None,
-    emo_kw: [str],
+    emo_kw: str,
 ):
     """加载最接近的参考音，
         1. 使用VAD筛选
@@ -57,7 +57,7 @@ def load_refrence(
     Args:
         actor (str): 古装_旁白,ZYH,_灵异
         emo (str or int, str or int, str or int]orNone): VAD
-        emo_kw : list strings of emo KeyWord
+        emo_kw : strings of emo KeyWord
     """
     # print("load refrence called:", project_name, actor, emo, emo_kw)
     root_dir = f"./data/{project_name}/{actor}"
@@ -73,7 +73,9 @@ def load_refrence(
         # vad find 2 matches
         vad_content = findNearestVAD(vad, content, 1)
     voices = vad_content
-    voices.append(findNearestKW(emo_kw, content))
+    kw_voice = findNearestKW(emo_kw, content)
+    if kw_voice != voices[0]: #dont add same voice
+        voices.append(kw_voice)
     return voices
 
 
