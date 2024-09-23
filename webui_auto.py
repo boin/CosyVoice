@@ -27,7 +27,7 @@ def download_all_wavs(wavs, hash=hash):
             zip.write(wavs[f], f"{f}.wav")
     zip.close()
     logging.info(f"zipfile {fn} writed. size {(Path(fn).lstat()).st_size}")
-    return gr.DownloadButton(label="点击下载", value=fn)
+    return gr.DownloadButton(label="点击下载", value=fn, variant="stop")
 
 
 def load_wav_cache(project, hash):
@@ -40,6 +40,13 @@ def load_wav_cache(project, hash):
         wavs[idx] = f
     # print(pattern, wavs)
     return wavs
+
+
+def play_ref_audio(project, actor, voice):
+    audio_path = (
+        Path("./data") / project / actor / "train" / f'{voice.split(" ")[0]}.wav'
+    )
+    return audio_path
 
 
 def start_inference(
@@ -116,7 +123,7 @@ def start_inference(
     )
     output_path = str(Path(res_dir) / f"{id}.wav")
     wavs[id] = output_path
-    return output_path, gr.DownloadButton(output_path, variant="stop"), wavs
+    return output_path, wavs
 
 
 with gr.Blocks(fill_width=True) as demo:
@@ -163,6 +170,20 @@ with gr.Blocks(fill_width=True) as demo:
         output_dir = gr.Textbox("output", label="输出路径")
         upload = gr.File(label="上传台词本", file_types=["text", ".xlsx"])
         upload.upload(upload_textbook, inputs=[upload, project, wavs], outputs=[wavs])
+    with gr.Row():
+        gen_all = gr.Button("一键推理", variant="primary")
+        gen_all.click(
+            None,
+            js="()=>{let g=document.querySelectorAll('.gen-btn');g.forEach(x=>!x.id&&x.click())}",
+        )
+        re_gen_all = gr.Button("全部重推理", variant="primary")
+        re_gen_all.click(None,
+            js="()=>{let g=document.querySelectorAll('.gen-btn');g.forEach(x=>x.click())}",
+        )
+        dl_all = gr.DownloadButton("打包下载")
+        dl_all.click(
+            lambda x: download_all_wavs(x, hash), inputs=[wavs], outputs=[dl_all]
+        )
 
     @gr.render(inputs=[wavs, project])
     def render_lines(_wavs, _project):
@@ -196,13 +217,13 @@ with gr.Blocks(fill_width=True) as demo:
                             "生成",
                             scale=0,
                             variant="primary",
+                            elem_classes=["gen-btn"],
+                            elem_id=idx if wav_url else "",
                         )
-                        download_btn = gr.DownloadButton(
-                            label="下载",
+                        preview_btn = gr.Button(
+                            value="预览输出",
                             scale=0,
-                            value=wav_url,
                         )
-                        # done_btn.click(lambda: False, None, [s])
 
                     with gr.Row():
                         gr.Text(
@@ -234,20 +255,36 @@ with gr.Blocks(fill_width=True) as demo:
                     preview_audio = gr.Audio(
                         # container=False,
                         label="输出预览",
-                        show_download_button=False,
+                        show_download_button=True,
                         show_share_button=False,
                         sources=[],
                         scale=0,
                         value=wav_url,
                     )
+
+                    # for preserve wav_url , not working with lambdas!
+                    """
+                        In a gr.render, if a variable in a loop is used inside an event listener function,
+                        that variable should be "frozen" via setting it to itself as a default argument in the function header.
+                        See how we have task=task in both mark_done and delete. This freezes the variable to its "loop-time" value.
+                        https://www.gradio.app/guides/dynamic-apps-with-render-decorator
+                    """
+                    def reset_preview(wav=wav_url):
+                        return gr.Audio(value=wav)
+
+                    preview_audio.clear(reset_preview, outputs=[preview_audio])
                 gen_btn.click(
                     start_inference,
                     inputs=[project, output_dir, actor, text, ref_ctl, id, rseed, wavs],
-                    outputs=[preview_audio, download_btn, wavs],
+                    outputs=[preview_audio, wavs],
                 )
-
-    dl_all = gr.DownloadButton("一键三连", variant="primary")
-    dl_all.click(lambda x: download_all_wavs(x, hash), inputs=[wavs], outputs=[dl_all])
+                gr.on(
+                    triggers=[ref_ctl.focus, ref_ctl.select],
+                    fn=play_ref_audio,
+                    inputs=[project, actor, ref_ctl],
+                    outputs=[preview_audio],
+                )
+                preview_btn.click(reset_preview, outputs=[preview_audio])
 
 
 if __name__ == "__main__":
