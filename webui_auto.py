@@ -82,7 +82,7 @@ def start_inference(
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
     logging.info(
-        f"call cosyvoice/bin/inference.py {project_name} {mode} => {actor} {voice} says: {text} with r_seed {r_seed}, result to {res_dir}"
+        f"call cosyvoice/bin/inference.py {project_name} {mode} => actor: {actor} voice: {voice} says: {text} with r_seed {r_seed}, result to {res_dir}"
     )
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
     cmd = [

@@ -76,7 +76,7 @@ def load_refrence(
     kw_voice = findNearestKW(emo_kw, content)
     if kw_voice != voices[0]: #dont add same voice
         voices.append(kw_voice)
-    return voices
+    return [ f.split(" ")[0] for f in voices ]
 
 
 def load_actor(actor: str, project_name):
