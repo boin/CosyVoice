@@ -2,6 +2,7 @@ import glob
 import json
 import logging
 import os
+import random
 import subprocess
 from hashlib import md5
 from pathlib import Path
@@ -15,6 +16,11 @@ from tools.emo_dialog_parser import dialog_parser
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+# global vars
+wavs = {"v": 0}
+projects = load_projects()
+hash = ""
 
 
 def download_all_wavs(wavs, hash=hash):
@@ -49,8 +55,23 @@ def play_ref_audio(project, actor, voice):
     return audio_path
 
 
+def upload_textbook(text_url: str, project: str):
+    global hash, wavs
+    hash = md5(Path(text_url).read_bytes()).hexdigest()  # save file hash for future use
+    workbook = openpyxl.load_workbook(text_url, read_only=True)
+    rows = [row for row in workbook.active.rows]
+    if not len(rows) > 0:
+        raise gr.Error("Empty document")
+    lines = list(dialog_parser(rows))
+    new_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
+    wavs["v"] += 1
+    for k in new_wavs.keys():
+        wavs[k] = new_wavs[k]
+    return lines
+
+
 def start_inference(
-    project_name, output_path, actor, text, voice, id: str, r_seed, wavs
+    project_name, output_path, actor, text, voice, id: str, r_seed, wavs=wavs
 ):
     """开始推理
     Args:
@@ -68,7 +89,6 @@ def start_inference(
         raise gr.Error("no voice.")
     mode = "zero_shot"
     epoch = 0
-    r_seed = r_seed[id] if id in r_seed else ""
     pre_model_path = Path("pretrained_models/CosyVoice-300M")
     output_path = Path(f"data/{project_name}/{actor}/{output_path}")
     train_list = output_path / "train" / "temp2" / "data.list"
@@ -81,9 +101,6 @@ def start_inference(
     json_path = str(Path(res_dir) / "tts_text.json")
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
-    logging.info(
-        f"call cosyvoice/bin/inference.py {project_name} {mode} => actor: {actor} voice: {voice} says: {text} with r_seed {r_seed}, result to {res_dir}"
-    )
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
     cmd = [
         r"python3",
@@ -113,6 +130,9 @@ def start_inference(
         "--file_name",
         str(id),
     ]
+    logging.info(
+        f"call inference {project_name} => actor: {actor} voice: {voice} says: {text} with cmd {cmd}"
+    )
     subprocess.run(
         cmd,
         env=dict(
@@ -123,53 +143,38 @@ def start_inference(
     )
     output_path = str(Path(res_dir) / f"{id}.wav")
     wavs[id] = output_path
-    return output_path, wavs
+    return output_path
 
 
 with gr.Blocks(fill_width=True) as demo:
-    wavs = gr.State({"v": 0})
-    rseed = gr.State({})
-    projects = load_projects()
-    hash = ""
-    lines = []
-
-    def upload_textbook(text_url: str, project: str, wavs: dict):
-        global hash, lines
-        hash = md5(
-            Path(text_url).read_bytes()
-        ).hexdigest()  # save file hash for future use
-        workbook = openpyxl.load_workbook(text_url, read_only=True)
-        rows = [row for row in workbook.active.rows]
-        if not len(rows) > 0:
-            raise gr.Error("Empty document")
-        lines = list(dialog_parser(rows))
-        new_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
-        wavs["v"] += 1
-        for k in new_wavs.keys():
-            wavs[k] = new_wavs[k]
-        return wavs
-
     # wavs.value = upload_textbook(
     #     "data/Ch001_天命，将至_QC.xlsx", projects[-1], wavs.value
     # )
-
-    wavs.change(lambda x: print(f"wavs changed.{x}\n"), inputs=wavs)
-    rseed.change(lambda x: print(f"rseed changed.{x}\n"), inputs=rseed)
-
+    lines = gr.State([])
+    lines.change(lambda x: logging.debug(f"wavs changed.{x}\n"), inputs=lines)
     with gr.Row():
-        project = gr.Dropdown(
-            choices=projects,
-            value=projects[-1] if len(projects) > 0 else "",
-            label="项目名称",
-        )
-        gr.Button("刷新").click(
-            lambda: {"__type__": "update", "choices": load_projects()},
-            inputs=[],
-            outputs=[project],
-        )
+        with gr.Column(variant="panel"):
+            project = gr.Dropdown(
+                choices=projects,
+                value=projects[-1] if len(projects) > 0 else "",
+                label="项目名称",
+            )
+            gr.Button("刷新").click(
+                lambda: {"__type__": "update", "choices": load_projects()},
+                inputs=[],
+                outputs=[project],
+            )
+        with gr.Column(variant="panel"):
+            seed = gr.Number(value=0, label="随机推理种子", interactive=True)
+            with gr.Row():
+                gr.Button("\U0001f3b2").click(
+                    lambda: random.randint(1, 1e8), outputs=seed
+                )
+                gr.Button("清除").click(lambda: None, outputs=seed)
         output_dir = gr.Textbox("output", label="输出路径")
         upload = gr.File(label="上传台词本", file_types=["text", ".xlsx"])
-        upload.upload(upload_textbook, inputs=[upload, project, wavs], outputs=[wavs])
+        upload.upload(upload_textbook, inputs=[upload, project], outputs=[lines])
+        upload.clear(lambda: [], outputs=lines)
     with gr.Row():
         gen_all = gr.Button("一键推理", variant="primary")
         gen_all.click(
@@ -177,22 +182,23 @@ with gr.Blocks(fill_width=True) as demo:
             js="()=>{let g=document.querySelectorAll('.gen-btn');g.forEach(x=>!x.id&&x.click())}",
         )
         re_gen_all = gr.Button("全部重推理", variant="primary")
-        re_gen_all.click(None,
+        re_gen_all.click(
+            None,
             js="()=>{let g=document.querySelectorAll('.gen-btn');g.forEach(x=>x.click())}",
         )
         dl_all = gr.DownloadButton("打包下载")
-        dl_all.click(
-            lambda x: download_all_wavs(x, hash), inputs=[wavs], outputs=[dl_all]
-        )
+        dl_all.click(lambda: download_all_wavs(wavs, hash), outputs=[dl_all])
 
-    @gr.render(inputs=[wavs, project])
-    def render_lines(_wavs, _project):
-        print("re-render wavs version with active project:", _project, _wavs["v"])
-        task_list = lines
+    @gr.render(inputs=[lines, project])
+    def render_lines(_lines, _project):
+        logging.debug(
+            "re-render wavs version with active project:", _project, wavs["v"]
+        )
+        task_list = _lines
         # print(hash, task_list[0], _wavs, "\n")
         for task in task_list:
             idx = f'{hash}-{task["id"]}'
-            wav_url = idx in _wavs.keys() and _wavs[idx] or None
+            wav_url = idx in wavs.keys() and wavs[idx] or None
             with gr.Row():
                 with gr.Column():
                     with gr.Row():
@@ -262,21 +268,14 @@ with gr.Blocks(fill_width=True) as demo:
                         value=wav_url,
                     )
 
-                    # for preserve wav_url , not working with lambdas!
-                    """
-                        In a gr.render, if a variable in a loop is used inside an event listener function,
-                        that variable should be "frozen" via setting it to itself as a default argument in the function header.
-                        See how we have task=task in both mark_done and delete. This freezes the variable to its "loop-time" value.
-                        https://www.gradio.app/guides/dynamic-apps-with-render-decorator
-                    """
-                    def reset_preview(wav=wav_url):
-                        return gr.Audio(value=wav)
+                # to preserve idx variable
+                def reset_audio(id=idx):
+                    return id in wavs and gr.Audio(wavs[id]) or None
 
-                    preview_audio.clear(reset_preview, outputs=[preview_audio])
                 gen_btn.click(
                     start_inference,
-                    inputs=[project, output_dir, actor, text, ref_ctl, id, rseed, wavs],
-                    outputs=[preview_audio, wavs],
+                    inputs=[project, output_dir, actor, text, ref_ctl, id, seed],
+                    outputs=[preview_audio],
                 )
                 gr.on(
                     triggers=[ref_ctl.focus, ref_ctl.select],
@@ -284,7 +283,11 @@ with gr.Blocks(fill_width=True) as demo:
                     inputs=[project, actor, ref_ctl],
                     outputs=[preview_audio],
                 )
-                preview_btn.click(reset_preview, outputs=[preview_audio])
+                gr.on(
+                    triggers=[preview_audio.clear, preview_btn.click],
+                    fn=reset_audio,
+                    outputs=preview_audio,
+                )
 
 
 if __name__ == "__main__":

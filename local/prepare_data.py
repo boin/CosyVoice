@@ -42,12 +42,18 @@ def init_from_lib(prj_name, actor, split_ratio):
     return tr_cnt, vl_cnt
 
 def prepare_normalize_txt(file):
+    if file.count(" ") > 0:
+        raise gr.Error(f"文件路径和文件名不得含有空格：{file}")
+    fn_length = len(Path(file).name.encode("utf-8"))
+    #print(f'finename {Path(file).name} actual length: {fn_length}')
+    if fn_length > 244:
+        raise gr.Error(f"文件名长度不得超过255个字符: {file}")
     txt_path = file.rpartition(".wav")[0] + ".normalized.txt"
     if not os.path.exists(txt_path):
         #logger.warning('{} do not exsist'.format(txt_path))
         meta = os.path.basename(file).rpartition('.wav')[0].split("_")
         if len(meta) != 5:
-            raise gr.Error(f"invalid file meta: {file}")
+            raise gr.Error(f"文件元数据错误: {file}")
         Path(txt_path).write_text(meta[4])
         logger.info(f'{txt_path} created.')
     return txt_path
