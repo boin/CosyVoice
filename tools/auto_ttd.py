@@ -43,6 +43,9 @@ def get_uut_by_name(project_name, actor, exact=False):
     if not exact:  # 非精确返回最后一个结果，作为debug
         return dir
 
+def load_refrence_wav(project_name, actor, voice):
+    """根据项目名称，角色和音色加载试听wav文件"""
+    return Path(TTD_LIB) / project_name / LIB_SUB / actor / f'{voice}.wav'
 
 def load_refrence(
     project_name,
@@ -70,12 +73,12 @@ def load_refrence(
             int(float(emo[2]) * 100),
         ]
         # print(vad)
-        # vad find 2 matches
-        vad_content = findNearestVAD(vad, content, 1)
+        # vad find 10 matches
+        vad_content = findNearestVAD(vad, content, 10)
     voices = vad_content
     kw_voice = findNearestKW(emo_kw, content)
     if kw_voice != voices[0]: #dont add same voice
-        voices.append(kw_voice)
+        voices.insert(0, kw_voice) # KW voice first
     return [ f.split(" ")[0] for f in voices ]
 
 

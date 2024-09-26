@@ -69,15 +69,8 @@ def refresh_voice(project_input_dir, output_path, actor):
 
 # TODO refractor to load ttd_lib file
 def load_refrence_wav(refrence_name, project_input_dir, actor):
-    if not project_input_dir:
-        return
-    root_dir = (
-        project_input_dir.endswith(".pt")
-        and os.path.basename(os.path.realpath(f"{project_input_dir}/../../../"))
-        or project_input_dir
-    )
     [spkr, voice] = refrence_name.split(" - ")
-    path = data_path(f"{spkr}/train", root_dir, actor) / f"{voice}.wav"
+    path = ttd.load_refrence_wav(project_input_dir, actor, voice)
     return path
 
 
@@ -489,7 +482,7 @@ with gr.Blocks() as demo:
                 sources=[],
                 scale=2,
             )
-        with gr.Row():
+        with gr.Row(visible=False):
             w1 = gr.Number(value=0.5, label="首选音色权重", interactive=True)
             w2 = gr.Number(value=0.5, label="融合音色权重", interactive=True)
         text = gr.Text(label="输入文字")
