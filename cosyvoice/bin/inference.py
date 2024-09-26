@@ -18,10 +18,11 @@ import argparse
 import logging
 import os
 import random
+import warnings
+
 import numpy as np
 import pyloudnorm as pyln
 import soundfile as sf
-
 import torch
 import torchaudio
 from hyperpyyaml import load_hyperpyyaml
@@ -31,8 +32,7 @@ from tqdm import tqdm
 from cosyvoice.cli.model import CosyVoiceModel
 from cosyvoice.dataset.dataset import Dataset
 
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
@@ -87,12 +87,6 @@ def main():
     """
     args = get_args()
 
-    seed = args.rseed
-    if seed:
-        random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-
     logging.basicConfig(
         level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s"
     )
@@ -103,7 +97,13 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
     with open(args.config, "r") as f:
         configs = load_hyperpyyaml(f)
-
+    # re-seed after load_conf
+    seed = int(args.rseed) if args.rseed != "None" else None
+    if seed:
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
     # 使用配置里的llm/flow/hift 初始化一个CV模型，并加载对应的模型文件
     model = CosyVoiceModel(configs["llm"], configs["flow"], configs["hift"])
     model.load(args.llm_model, args.flow_model, args.hifigan_model)
@@ -185,24 +185,26 @@ def main():
                 if mix_embbeding and r1 and r2:
                     # print(r1, r2, mix_embbeding, utt_embedding.tolist()[0])
                     model_input["flow_embedding"] = torch.tensor(
-                        np.array([  # 绑定成2维数组
-                            np.asarray(utt_embedding.tolist()[0]) * float(r1)
-                            + np.asarray(mix_embbeding) * float(r2)
-                        ]),
+                        np.array(
+                            [  # 绑定成2维数组
+                                np.asarray(utt_embedding.tolist()[0]) * float(r1)
+                                + np.asarray(mix_embbeding) * float(r2)
+                            ]
+                        ),
                         dtype=torch.float32,
                     )
             # 这就是开始干活了…
             model_output = model.inference(**model_input)
-            #testing
+            # testing
             out_audio = model_output["tts_speech"]
             # 以下是把数据存成音频文件（wav.scp），不重要了。
             tts_key = args.file_name or f"{utts[0]}_{tts_index[0]}"
             tts_fn = os.path.join(args.result_dir, f"{tts_key}.wav")
             torchaudio.save(tts_fn, out_audio, sample_rate=22050)
-            #normalize
-            data, sr = sf.read(tts_fn) # load audio
+            # audio normalize
+            data, sr = sf.read(tts_fn)  # load audio
             # measure the loudness first
-            meter = pyln.Meter(sr) # create BS.1770 meter
+            meter = pyln.Meter(sr)  # create BS.1770 meter
             loudness = meter.integrated_loudness(data)
             # loudness normalize audio to -25 dB LUFS
             out_audio = pyln.normalize.loudness(data, loudness, -25.0)
