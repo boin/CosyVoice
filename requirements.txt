@@ -32,3 +32,5 @@ jieba
 funasr
 ffmpeg-python
 gradio_log
+flask
+flask-cors
