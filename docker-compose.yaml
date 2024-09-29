@@ -1,5 +1,5 @@
 services:
-  cosy-base:
+  cosy-cpu:
     build: .
     image: cosy-voice:latest   # please change the image name and tag base your environment. If the tag contains the word 'elite', such as "latest-elite", it indicates that the image does not include the necessary models such as GPT-SoVITS, UVR5, Damo ASR, etc. You will need to download them yourself and map them into the container.
     environment:
@@ -21,16 +21,17 @@ services:
     restart: unless-stopped
     extra_hosts:
     - "ttd-server:host-gateway"
-#=9886">3070Ti
-#=9876">3080Ti
-#=9866">P5000
-#=9856">测试服（只用CPU）
+    ports: #For CPU
+    - "9856:8000"
+    - "9857:9883" #train
+    - "8004:9884"
+
   cosy-3070:
     container_name: 'cosy-3070'
     profiles:
       - production
     extends: cosy-base
-    ports:
+    ports: !override
       - "9886:8000"
       - "9887:9883"
       - "8001:9884"
@@ -46,7 +47,7 @@ services:
     profiles:
       - production
     extends: cosy-base
-    ports:
+    ports: !override
       - "9876:8000"
       - "9877:9883"
       - "8002:9884"
@@ -63,11 +64,10 @@ services:
     profiles:
       - production
     extends: cosy-base
-    ports:
+    ports: !override
       - "9866:8000"
       - "9867:9883" #train
       - "8003:9884"
-
     deploy:
       resources:
         reservations:
@@ -75,12 +75,3 @@ services:
           - driver: nvidia
             device_ids: ["0"]
             capabilities: [gpu]
-  cosy-cpu:
-    container_name: 'cosy-cpu'
-    profiles:
-      - production
-    extends: cosy-base
-    ports:
-      - "9856:8000"
-      - "9857:9883" #train
-      - "8004:9884"
