@@ -1,2 +1,0 @@
-nvcc --version
-pause
