@@ -52,3 +52,5 @@ pretrained_models/*
 py311/
 logs/
 ttd_lib
+*.m4a
+*.aac

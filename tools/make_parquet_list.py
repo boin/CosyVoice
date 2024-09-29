@@ -23,7 +23,7 @@ import time
 import torch
 
 
-def job(utt_list, parquet_file, utt2parquet_file, spk2parquet_file, utt2wav):
+def job(utt_list, parquet_file, utt2parquet_file, spk2parquet_file):
     start_time = time.time()
     data_list = []
     for utt in tqdm(utt_list):
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         parquet_list.append(parquet_file)
         utt2parquet_list.append(utt2parquet_file)
         spk2parquet_list.append(spk2parquet_file)
-        pool.apply_async(job, (utts[j: j + args.num_utts_per_parquet], parquet_file, utt2parquet_file, spk2parquet_file, utt2wav))
+        pool.apply_async(job, (utts[j: j + args.num_utts_per_parquet], parquet_file, utt2parquet_file, spk2parquet_file))
     pool.close()
     pool.join()
 

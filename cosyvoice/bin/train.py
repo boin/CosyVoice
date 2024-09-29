@@ -40,14 +40,11 @@ from torch.distributed.elastic.multiprocessing.errors import record
 
 from cosyvoice.utils.executor import Executor
 from cosyvoice.utils.train_utils import (
-    check_modify_and_save_config,
-    init_dataset_and_dataloader,
     init_distributed,
+    init_dataset_and_dataloader,
     init_optimizer_and_scheduler,
-    init_summarywriter,
-    save_model,
-    wrap_cuda_model,
-)
+    init_summarywriter, save_model,
+    wrap_cuda_model, check_modify_and_save_config)
 
 
 def get_args():
@@ -67,7 +64,7 @@ def get_args():
                         help='tensorboard log dir')
     parser.add_argument('--ddp.dist_backend',
                         dest='dist_backend',
-                        default='gloo',
+                        default='nccl',
                         choices=['nccl', 'gloo'],
                         help='distributed backend')
     parser.add_argument('--num_workers',

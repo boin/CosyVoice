@@ -567,8 +567,7 @@ class NoamAnnealing(_LRScheduler):
                  min_lr=0.0,
                  last_epoch=-1):
         self._normalize = d_model**(-0.5)
-        assert not (warmup_steps is not None
-                    and warmup_ratio is not None), \
+        assert not (warmup_steps is not None and warmup_ratio is not None), \
             "Either use particular number of step or ratio"
         assert warmup_ratio is None or max_steps is not None, \
             "If there is a ratio, there should be a total steps"
@@ -737,4 +736,3 @@ class ConstantLR(_LRScheduler):
 
     def set_step(self, step: int):
         self.last_epoch = step
-
