@@ -34,6 +34,10 @@ instruct_dict = {'预训练音色': '1. 选择预训练音色\n2. 点击生成�
 stream_mode_list = [('否', False), ('是', True)]
 max_val = 0.8
 
+def auto_asr(audio_path):
+    from tools.funasr import asr_model
+    res = asr_model(open(audio_path, "rb"))
+    return res['result'][0]["clean_text"]
 
 def generate_seed():
     seed = random.randint(1, 100000000)
@@ -167,6 +171,9 @@ def main():
                                       seed, stream, speed],
                               outputs=[audio_output])
         mode_checkbox_group.change(fn=change_instruction, inputs=[mode_checkbox_group], outputs=[instruction_text])
+        prompt_wav_upload.change(
+            fn=auto_asr, inputs=[prompt_wav_upload], outputs=[prompt_text]
+        )
     demo.queue(max_size=4, default_concurrency_limit=2)
     demo.launch(server_name='0.0.0.0', server_port=args.port)
 

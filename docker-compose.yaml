@@ -1,19 +1,19 @@
 services:
   cosy-cpu:
     build: .
-    image: cosy-voice:latest   # please change the image name and tag base your environment. If the tag contains the word 'elite', such as "latest-elite", it indicates that the image does not include the necessary models such as GPT-SoVITS, UVR5, Damo ASR, etc. You will need to download them yourself and map them into the container.
+    image: cosy-voice:test   # please change the image name and tag base your environment. If the tag contains the word 'elite', such as "latest-elite", it indicates that the image does not include the necessary models such as GPT-SoVITS, UVR5, Damo ASR, etc. You will need to download them yourself and map them into the container.
     environment:
-      - is_half=False
+      - is_half=True
       - is_share=False
       - LC_ALL=en_US.UTF-8
       - PYTHONIOENCODING=UTF-8       
       - PYTHONPATH=./:./third_party/Matcha-TTS:./third_party/AcademiCodec
     volumes:
       - /home/docker/mnt/TeamSpace/TTD-Space/项目:/opt/CosyVoice/ttd_lib
-      - /home/docker/mnt/TTD-Data/cosy-voice/.cache:/opt/CosyVoice/.cache
+      - /home/docker/mnt/TTD-Data/cosy-voice/cache:/opt/CosyVoice/.cache
       - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Voices:/opt/CosyVoice/voices
       - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Train:/opt/CosyVoice/data
-      - /home/docker/mnt/TTD-Data/cosy-voice/pretrained_models:/opt/CosyVoice/pretrained_models
+      - /home/docker/mnt/TTD-Data/cosy-voice/pretrained_models_git:/opt/CosyVoice/pretrained_models
     working_dir: /opt/CosyVoice
     shm_size: 32G
     stdin_open: true
