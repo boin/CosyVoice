@@ -1,20 +1,24 @@
 import json
+import logging
 import os
 import random
 import subprocess
+import warnings
 from pathlib import Path
-import logging
-import tools.auto_ttd as ttd
+
 import gradio as gr
 import psutil
+import torch
 from gradio_log import Log
 
-import warnings
+import tools.auto_ttd as ttd
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+device = torch.cuda.is_available() and torch.cuda.get_device_name(0) or "CPU"
 
 
 def data_path(path, base, actor):
@@ -89,10 +93,9 @@ def load_mix_ref(pt_dir):
 
 
 def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
-
-    #check src first
+    # check src first
     if ttd.check_proj_actor_wavs(project_input_dir, actor) < 1:
-        raise gr.Error('该角色没有可训练的文件')
+        raise gr.Error("该角色没有可训练的文件")
 
     for state, input_path in zip(
         ["train", "val"],
@@ -127,7 +130,7 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
                 "--init_split_ratio",
                 str(split_ratio),
                 "--force_flag",
-                str(force_flag), #str True / False
+                str(force_flag),  # str True / False
             ],
             # capture_output= True
             env=dict(
@@ -379,6 +382,11 @@ with gr.Blocks() as demo:
         gr.Button(
             value="刷新项目角色",
         ).click(refresh_lib_actors, [project_input_dir], [actor])
+        gr.Text(
+            label="当前显卡",
+            value=device,
+            info="显示当前使用的GPU型号，如果没有检测到则显示CPU",
+        )
     with gr.Accordion("高级选项，一般不用管", open=False):
         output_dir = gr.Text(
             label="模型输出文件夹",
@@ -497,7 +505,7 @@ with gr.Blocks() as demo:
     voices.change(
         load_refrence_wav, inputs=[voices, project_input_dir, actor], outputs=preview
     )
-    spk_mix.change(load_refrence_wav, inputs=[spk_mix, mix_file, actor], outputs=preview2)
+    spk_mix.change(load_refrence_wav, [spk_mix, mix_file, actor], preview2)
 
     seed_button.click(generate_seed, inputs=[], outputs=seed)
     mix_file.change(load_mix_ref, inputs=[mix_file], outputs=[spk_mix])
