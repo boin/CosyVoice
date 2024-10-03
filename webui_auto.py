@@ -90,7 +90,7 @@ def start_inference(
         raise gr.Error("no voice.")
     mode = "zero_shot"
     epoch = 0
-    pre_model_path = Path("pretrained_models/CosyVoice-300M")
+    pre_model_path = Path("pretrained_models/CosyVoice-300M-25Hz")
     output_path = Path(f"data/{project_name}/{actor}/{output_path}")
     train_list = output_path / "train" / "temp2" / "data.list"
     utt2data_list = Path(train_list).with_name("utt2data.list")
@@ -111,7 +111,7 @@ def start_inference(
         "--gpu",
         "0",
         "--config",
-        "conf/cosyvoice.yaml",
+        "{}/cosyvoice.yaml".format(pre_model_path),
         "--prompt_data",
         train_list,
         "--prompt_utt2data",

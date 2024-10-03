@@ -92,7 +92,7 @@ def load_mix_ref(pt_dir):
     return gr.Dropdown(choices=voices)
 
 
-def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
+def preprocess(pre_model_path, project_input_dir, output_path, actor, split_ratio, force_flag):
     # check src first
     if ttd.check_proj_actor_wavs(project_input_dir, actor) < 1:
         raise gr.Error("该角色没有可训练的文件")
@@ -152,7 +152,7 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
                 "--dir",
                 str(temp1),
                 "--onnx_path",
-                "pretrained_models/CosyVoice-300M/campplus.onnx",
+                "{}/campplus.onnx".format(pre_model_path),
             ],
             # capture_output= True
         )
@@ -169,7 +169,7 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
                 "--dir",
                 str(temp1),
                 "--onnx_path",
-                "pretrained_models/CosyVoice-300M/speech_tokenizer_v1.onnx",
+                "{}/speech_tokenizer_v1.onnx".format(pre_model_path),
             ],
             # capture_output= True
         )
@@ -226,7 +226,7 @@ def train(project_input_dir, output_path, actor, pre_model_path, thread_num, max
             "--train_engine",
             "torch_ddp",
             "--config",
-            "conf/cosyvoice.yaml",
+            "{}/cosyvoice.yaml".format(pre_model_path),
             "--max_epoch",
             str(max_epoch),
             "--train_data",
@@ -316,7 +316,7 @@ def inference(
         "--gpu",
         "0",
         "--config",
-        "conf/cosyvoice.yaml",
+        "{}/cosyvoice.yaml".format(pre_model_path),
         "--prompt_data",
         train_list,
         "--prompt_utt2data",
@@ -394,7 +394,7 @@ with gr.Blocks() as demo:
             info="预处理与训练最终会输出在项目根目录的本文件夹下，没有会自动新建，一般不用改",
         )
         pretrained_model_path = gr.Text(
-            "pretrained_models/CosyVoice-300M",
+            "pretrained_models/CosyVoice-300M-25Hz",
             label="预训练模型文件夹",
             info="可选 300M-SFT/330M-Insturct 一般不用改",
         )
@@ -512,7 +512,7 @@ with gr.Blocks() as demo:
 
     preprocess_btn.click(
         preprocess,
-        inputs=[project_input_dir, output_dir, actor, split_ratio, re_init],
+        inputs=[pretrained_model_path, project_input_dir, output_dir, actor, split_ratio, re_init],
         outputs=status,
     )
     train_btn.click(
