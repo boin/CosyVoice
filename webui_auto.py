@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import random
+import torch
 import subprocess
 from hashlib import md5
 from pathlib import Path
@@ -21,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 wavs = {"v": 0}
 projects = load_projects()
 hash = ""
-
+device = torch.cuda.is_available() and torch.cuda.get_device_name(0) or "CPU"
 
 def download_all_wavs(wavs, hash=hash):
     logging.debug(f"download all calle with:{wavs}, {hash}")
@@ -171,7 +172,9 @@ with gr.Blocks(fill_width=True) as demo:
                     lambda: random.randint(1, 1e8), outputs=seed
                 )
                 gr.Button("清除").click(lambda: None, outputs=seed)
-        output_dir = gr.Textbox("output", label="输出路径")
+        with gr.Column(variant="panel"):
+            output_dir = gr.Textbox("output", label="输出路径")
+            gr.Text(container=False, value="当前显卡: " + device)
         upload = gr.File(label="上传台词本", file_types=["text", ".xlsx"])
         upload.upload(upload_textbook, inputs=[upload, project], outputs=[lines])
         upload.clear(lambda: [], outputs=lines)
