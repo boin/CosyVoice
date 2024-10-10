@@ -49,9 +49,10 @@ def load_refrence_wav(project_name, actor, voice):
 
 def load_refrence(
     project_name,
+    output_dir,
     actor: str,
-    emo: [str or int, str or int, str or int] or None,
     emo_kw: str,
+    emo: [str or int, str or int, str or int] or None,
 ):
     """加载最接近的参考音，
         1. 使用VAD筛选
@@ -65,7 +66,7 @@ def load_refrence(
     # print("load refrence called:", project_name, actor, emo, emo_kw)
     root_dir = f"./data/{project_name}/{actor}"
     # for compability
-    content = Path(f"{root_dir}/output/train/temp1/utt2spk").read_text().splitlines()
+    content = Path(f"{root_dir}/{output_dir}/train/temp1/utt2spk").read_text().splitlines()
     if emo:
         vad = [
             int(float(emo[0]) * 100),

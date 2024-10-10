@@ -24,6 +24,7 @@ projects = load_projects()
 hash = ""
 device = torch.cuda.is_available() and torch.cuda.get_device_name(0) or "CPU"
 
+
 def download_all_wavs(wavs, hash=hash):
     logging.debug(f"download all calle with:{wavs}, {hash}")
     fn = f"/tmp/gradio/{hash}.zip"
@@ -38,7 +39,7 @@ def download_all_wavs(wavs, hash=hash):
 
 
 def load_wav_cache(project, hash):
-    # data/240915_有声书_殓葬禁忌/古装_师父,GZJ_灵异/output/outputs/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
+    # data/240915_有声书_殓葬禁忌/古装_师父,GZJ_灵异/output(-25Hz)/outputs/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
     pattern = f"data/{project}/*/*/*/*/{hash}*.wav"
     files = glob.glob(pattern)
     wavs = {}
@@ -173,7 +174,7 @@ with gr.Blocks(fill_width=True) as demo:
                 )
                 gr.Button("清除").click(lambda: None, outputs=seed)
         with gr.Column(variant="panel"):
-            output_dir = gr.Textbox("output", label="输出路径")
+            output_dir = gr.Textbox("output-25Hz", label="输出路径")
             gr.Text(container=False, value="当前显卡: " + device)
         upload = gr.File(label="上传台词本", file_types=["text", ".xlsx"])
         upload.upload(upload_textbook, inputs=[upload, project], outputs=[lines])
@@ -200,7 +201,7 @@ with gr.Blocks(fill_width=True) as demo:
         task_list = _lines
         # print(hash, task_list[0], _wavs, "\n")
         for task in task_list:
-            #print(task)
+            # print(task)
             idx = f'{hash}-{task["id"]}'
             wav_url = idx in wavs.keys() and wavs[idx] or None
             with gr.Row():
@@ -251,9 +252,10 @@ with gr.Blocks(fill_width=True) as demo:
                         )
                         refrences = load_refrence(
                             _project,
+                            output_dir.value,
                             actors[0],  # use parsed actorname than original
+                            f'{task["emo_1"]}{task["emo_2"]}',
                             [task["V"], task["A"], task["D"]],
-                            emo_kw=f'{task["emo_1"]}{task["emo_2"]}',
                         )
                         ref_ctl = gr.Dropdown(
                             choices=refrences,

@@ -390,7 +390,7 @@ with gr.Blocks() as demo:
     with gr.Accordion("高级选项，一般不用管", open=False):
         output_dir = gr.Text(
             label="模型输出文件夹",
-            value="output",
+            value="output-25Hz",
             info="预处理与训练最终会输出在项目根目录的本文件夹下，没有会自动新建，一般不用改",
         )
         pretrained_model_path = gr.Text(
@@ -452,7 +452,7 @@ with gr.Blocks() as demo:
                 interactive=True,
                 precision=0,
                 label="模型轮次ID",
-                info="使用模型输出文件夹中训练第？轮次的模型",
+                info="使用模型输出文件夹中训练第？轮次的模型，留空为默认底模",
                 scale=1,
             )
             with gr.Column():
