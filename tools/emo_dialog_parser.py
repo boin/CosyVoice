@@ -32,7 +32,13 @@ def dialog_parser_excel(rows: list):
     """
     headers = rows.pop(0) #pop-out header
     headers = ['id', "actor", "emo_1", "emo_2", "V", "A", "D", "text", "contorl"]
-    for id, row in enumerate(rows):
-        content = [id+1, row[0].value ] + (row[1].value.split(",")) + [row[2].value, row[3].value, row[4].value, row[5].value]
+    for id, row in enumerate(rows): 
+        if not ( row[0].value or row[1].value or row[2].value or row[3].value or row[4].value or row[5].value ):
+            print(f"Excel 文件第{id}行, 有内容为空，跳过")
+            continue
+        #print('processing line {}'.format(id))
+        emos = row[1].value.split(",")
+        emos = emos[:2] if len(emos) > 1 else [emos[0], ""] #make sure emos has 2 elements
+        content = [id+1, row[0].value ] + emos + [row[2].value, row[3].value, row[4].value, row[5].value]
         #print(content)
         yield dict(zip(headers, content))
