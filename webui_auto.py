@@ -62,7 +62,7 @@ def upload_textbook(text_url: str, project: str):
     workbook = openpyxl.load_workbook(text_url, read_only=True)
     rows = [row for row in workbook.active.rows]
     if not len(rows) > 0:
-        raise gr.Error("Empty document")
+        raise gr.Error("Excel文档为空！")
     lines = list(dialog_parser(rows))
     new_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
     wavs["v"] += 1
@@ -200,6 +200,7 @@ with gr.Blocks(fill_width=True) as demo:
         task_list = _lines
         # print(hash, task_list[0], _wavs, "\n")
         for task in task_list:
+            #print(task)
             idx = f'{hash}-{task["id"]}'
             wav_url = idx in wavs.keys() and wavs[idx] or None
             with gr.Row():
