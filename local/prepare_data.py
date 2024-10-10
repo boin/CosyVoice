@@ -2,7 +2,6 @@ import argparse
 import logging
 import glob
 import os
-import sys
 import shutil
 import gradio as gr
 from pathlib import Path
@@ -99,7 +98,7 @@ def main():
     for wav in tqdm(wavs):
         txt = prepare_normalize_txt(wav)
         with open(txt, encoding="utf-8") as f:
-            content = "".join(l.replace("\n", "") for l in f.readline())
+            content = "".join(line.replace("\n", "") for line in f.readline())
         utt = Path(
             wav
         ).stem  # 提取 utt 如 旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav  => 旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。
