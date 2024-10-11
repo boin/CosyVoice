@@ -76,9 +76,9 @@ def load_refrence(
         # vad find 10 matches
         vad_content = findNearestVAD(vad, content, 10)
     voices = vad_content
-    kw_voice = findNearestKW(emo_kw, content)
-    if kw_voice != voices[0]: #dont add same voice
-        voices.insert(0, kw_voice) # KW voice first
+    #kw_voice = findNearestKW(emo_kw, content)
+    #if kw_voice != voices[0]: #dont add same voice
+    #    voices.insert(0, kw_voice) # KW voice first
     return [ f.split(" ")[0] for f in voices ]
 
 

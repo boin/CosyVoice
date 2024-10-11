@@ -20,6 +20,41 @@ KDTree.search(tree_obj.keys(), [v, a, d])
 """
 
 
+def find_nearest_match_euclidean(target, coordinates, count):
+    """找到最近的匹配坐标，优先级为欧式距离"""
+
+    vad_tree = coordinates
+    vad = target
+
+    d = ((vad_tree - vad) ** 2).sum(axis=1)  # compute distances
+    ndx = d.argsort()  # indirect sort
+
+    result = vad_tree[ndx[:count]].tolist()
+    return result
+
+
+def find_nearest_match_adv(target, coordinates, count):
+    """找到最近的匹配坐标，优先级为ADV，根据 a、d、v 的优先级计算综合距离"""
+    weight_a = 100  # a 的权重
+    weight_d = 10  # d 的权重
+    weight_v = 1  # v 的权重
+
+    distances = []
+    for coord in coordinates:
+        distance = (
+            weight_a * abs(target[1] - coord[1])
+            + weight_d * abs(target[2] - coord[2])
+            + weight_v * abs(target[0] - coord[0])
+        )
+        distances.append((distance, coord))
+    # 按距离排序
+    distances.sort(key=lambda x: x[0])
+
+    # 提取前 top_n 个结果
+    nearest_coords = [coord for _, coord in distances[:count]]
+    return nearest_coords
+
+
 # 取得最相近的VAD count结果
 def findNearestVAD(vad: [str or int, str or int, str or int], voices: [str], count=10):
     tree_obj = init_vad_tree(voices)  # text.splitlines()
@@ -34,10 +69,11 @@ def findNearestVAD(vad: [str or int, str or int, str or int], voices: [str], cou
     d = ((vad_tree - vad) ** 2).sum(axis=1)  # compute distances
     ndx = d.argsort()  # indirect sort
 
-    # print 10 nearest points to the chosen one
-    # print(list(zip(tree[ndx[:10]], d[ndx[:10]])))
-    logging.debug(f"与 VAD: {vad} 最相近的{count}个 VAD :  {vad_tree[ndx[:count]]}")
-    result = [tree_obj[tuple(idx)] for idx in vad_tree[ndx[:count]].tolist()]
+    result = find_nearest_match_adv(vad, vad_tree, count)  # based from ADV
+
+    logging.debug(f"与 VAD: {vad} 最相近的{count}个 VAD :  {result}")
+
+    result = [tree_obj[tuple(idx)] for idx in result]
     logging.debug(result)
     return result
 
@@ -99,79 +135,7 @@ def findNearestKW(target, strings):
 
 
 if __name__ == "__main__":
-    text = """对白_担忧_1_VAD_小兰，等会儿看到了树枝，你尽快帮我取出来。.wav
-对白_讽刺_1_VAD_没事，想要生活过得去，总得头上带点绿，不是吗？.wav
-对白_讽刺_2_VAD_一时间，惨叫声此起彼伏。.wav
-旁白_不相信_1_VAD_连村霸也都有了文化。.wav
-旁白_不相信_2_VAD_惹得我是一头雾水的。.wav
-旁白_信任_1_VAD_我和师父做的虽然是死人的生意，但信的是天命，是自然。.wav
-旁白_傲慢_1_VAD_总认为啊，天大地大，自己最大。.wav
-旁白_傲慢_2_VAD_因为鬼婆婆的关系，他们根本就没有见识过唐雅兰的真本事。.wav
-旁白_冷静_10_VAD_成了被猎豹捕食的小绵羊。.wav
-旁白_冷静_11_VAD_周泰的那些手下们，没有一个是唐雅兰的一合之敌。.wav
-旁白_冷静_12_VAD_想将我母亲殓葬入土。.wav
-旁白_冷静_13_VAD_再看唐雅兰。.wav
-旁白_冷静_14_VAD_神色平静，目光冷淡。.wav
-旁白_冷静_15_VAD_打倒了这一群人，仿佛只是踩死了几只蚂蚁而已。.wav
-旁白_冷静_16_VAD_没费她多少力气，也没有撩动她的心弦。.wav
-旁白_冷静_1_VAD_那就是，向弱者挥刀。.wav
-旁白_冷静_2_VAD_这样的性格，地位又高，很自然成了周泰的用来欺压而立威的对象。.wav
-旁白_冷静_3_VAD_而且到了新时代了。.wav
-旁白_冷静_4_VAD_至今，鬼婆婆和唐雅兰早就搬离了原地，住进了村委会。.wav
-旁白_冷静_5_VAD_虽然周泰只是村霸，.wav
-旁白_冷静_6_VAD_所以也一直忍着。.wav
-旁白_冷静_7_VAD_因此啊，在唐雅兰朝着周泰一行人冲去之后，.wav
-旁白_冷静_8_VAD_至于我，师父认为我当时已经死定了。.wav
-旁白_冷静_9_VAD_反观周泰那些身材高大的手下们，.wav
-旁白_哀愁_1_VAD_但俗话说得好，因果循环，天心难策。.wav
-旁白_哀愁_2_VAD_这才不过刚刚开端而已。.wav
-旁白_夸赞_1_VAD_村子里的村干部解决不了的问题，或是民事纠纷，往往，都要请鬼婆婆出马。.wav
-旁白_害怕_1_VAD_我开始害怕，我想逃走，但却怎么都逃不掉。.wav
-旁白_害怕_2_VAD_我看到了她身边的那个孩子，那孩子在对我微笑，似乎对我十分亲近。.wav
-旁白_平静_1_VAD_村霸，我们那个时代都不少。.wav
-旁白_平静_2_VAD_不信鬼神，不信因果，不信报应。.wav
-旁白_平静_4_VAD_所以，时至今日，我们村所在的一大片区域。.wav
-旁白_平静_5_VAD_不管是村民们，以及我们村周边的村子。.wav
-旁白_平静_6_VAD_我笑呵呵地说出一句。.wav
-旁白_平静_7_VAD_鬼婆婆身份特殊。.wav
-旁白_平静_8_VAD_可也恰恰是因为身份特殊，所以性子，淡泊、孤僻。.wav
-旁白_平静_9_VAD_她清冷地朝着我看了过来，并朝着我走来。.wav
-旁白_悬疑_1_VAD_对于鬼神之事，都比较看重。.wav
-旁白_悬疑_2_VAD_而这类人，大部分都有一个特点。.wav
-旁白_悬疑_3_VAD_生养唐雅兰的鬼婆婆，是一位落花洞女。.wav
-旁白_悬疑_4_VAD_却又有一些，巫蛊祭祀的手段。.wav
-旁白_惊奇_1_VAD_一分钟。从唐雅兰出手到现在，.wav
-旁白_惊奇_2_VAD_不过只有短短的一分钟而已，.wav
-旁白_愤怒_1_VAD_周泰每次欺压鬼婆婆，.wav
-旁白_愤怒_2_VAD_总是以鬼婆婆，宣传迷信活动为借口，合理且合法的欺压她。.wav
-旁白_担忧_1_VAD_却成了对我这一生影响最大的劫难。.wav
-旁白_敬畏_1_VAD_是山神之妻，让人畏惧。.wav
-旁白_敬畏_2_VAD_而师傅也给我取名，肖魏魃。.wav
-旁白_敬畏_3_VAD_子时过半，鬼节来临。.wav
-旁白_沉思_1_VAD_可我母亲的身边又的确没有什么树枝。.wav
-旁白_焦虑_1_VAD_眼见到唐雅兰快冲到他面前了，.wav
-旁白_焦虑_2_VAD_我怎么都没有想到，.wav
-旁白_紧张_1_VAD_同时，他狠狠挥动铁铲，朝着唐雅兰的头，狠狠拍去。.wav
-旁白_紧张_2_VAD_拍向唐雅兰的铲子，又猛又快。.wav
-旁白_紧张_3_VAD_铲子拍下之际，.wav
-旁白_紧张_4_VAD_唐雅兰狠挥左手，掌呈刀势，.wav
-旁白_紧张_5_VAD_周泰吓到了，唐雅兰可没有。.wav
-旁白_紧张_6_VAD_打断铁铲之后，唐雅兰踏出右脚，.wav
-旁白_紧张_7_VAD_一记冲拳直冲周泰小腹。.wav
-旁白_讥讽_1_VAD_我可算是逮着机会反驳他了。.wav
-旁白_讥讽_2_VAD_以前这小子总是冷不丁地冒出这么些句子。.wav
-旁白_讥讽_3_VAD_怎么立威？怎么抬高自己？.wav
-旁白_轻蔑_1_VAD_而村霸最爱干的是什么？.wav
-旁白_轻蔑_2_VAD_除了赚钱，无疑就是树立自己的威信与地位！.wav
-旁白_鄙视_1_VAD_周泰就是我们村的村霸。只要有钱赚，什么事，都要参合一脚。.wav
-旁白_震惊_1_VAD_我看得出来，周泰一点力都没留。是铁了心真要杀人了，.wav
-旁白_震惊_2_VAD_只可惜，他的速度快，唐雅兰的速度更快，他的力量大，唐雅兰的力量更大。.wav
-旁白_震惊_3_VAD_旋身摆臂，把周泰如甩铅球一般甩了出去。.wav
-旁白_震惊_4_VAD_以迅雷不及掩耳之速，率先反砍到周泰手中的铁铲的把手之上。.wav
-旁白_震惊_5_VAD_“嘭！”一声爆响，铁铲把手应声而断。.wav
-旁白_震惊_6_VAD_周泰，也随之狠狠一怔。.wav
-旁白_震惊_7_VAD_农村的铁铲把手都是硬乔木做的，.wav
-"""
+    logging.basicConfig(level=logging.DEBUG)
     text = """对白_担忧_1_349151_小兰，等会儿看到了树枝，你尽快帮我取出来。.wav
 对白_讽刺_1_474596_没事，想要生活过得去，总得头上带点绿，不是吗？.wav
 对白_讽刺_2_806630_一时间，惨叫声此起彼伏。.wav
@@ -244,7 +208,7 @@ if __name__ == "__main__":
 旁白_震惊_5_552552_“嘭！”一声爆响，铁铲把手应声而断。.wav
 旁白_震惊_6_989150_周泰，也随之狠狠一怔。.wav
 旁白_震惊_7_642578_农村的铁铲把手都是硬乔木做的，.wav"""
-    text = re.sub(r"[VAD]", lambda x: "%02d" % (random.randint(0, 99)), text)
+    # text = re.sub(r"[VAD]", lambda x: "%02d" % (random.randint(0, 99)), text)
 
     import pprint
 
