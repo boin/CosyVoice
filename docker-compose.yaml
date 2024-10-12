@@ -1,5 +1,6 @@
 services:
   cosy-cpu:
+    container_name: 'cpu'  
     build: .
     image: cosy-voice:latest   # please change the image name and tag base your environment. If the tag contains the word 'elite', such as "latest-elite", it indicates that the image does not include the necessary models such as GPT-SoVITS, UVR5, Damo ASR, etc. You will need to download them yourself and map them into the container.
     environment:
@@ -27,10 +28,10 @@ services:
     - "8004:9884"
 
   cosy-3070:
-    container_name: 'cosy-3070'
+    container_name: '3070'
     profiles:
       - production
-    extends: cosy-base
+    extends: cosy-cpu
     ports: !override
       - "9886:8000"
       - "9887:9883"
@@ -43,10 +44,10 @@ services:
             device_ids: ["2"]
             capabilities: [gpu]
   cosy-3080:
-    container_name: 'cosy-3080'
+    container_name: '3080'
     profiles:
       - production
-    extends: cosy-base
+    extends: cosy-cpu
     ports: !override
       - "9876:8000"
       - "9877:9883"
@@ -60,10 +61,10 @@ services:
             device_ids: ["1"]
             capabilities: [gpu]
   cosy-p5000:
-    container_name: 'cosy-p5000'  
+    container_name: 'p5000'  
     profiles:
       - production
-    extends: cosy-base
+    extends: cosy-cpu
     ports: !override
       - "9866:8000"
       - "9867:9883" #train
