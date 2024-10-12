@@ -30,8 +30,8 @@ def init_from_lib(prj_name, actor, split_ratio):
     ]
     count = len(wavs)
     if count < 2:
-        raise gr.Error("语料少于2条，无法训练")
-    stop_num = math.floor(count * split_ratio) * 2  # 最小1， 0为自定义分配模式
+        raise gr.Error("语料少于2条，无法导入")
+    stop_num = math.floor(count * split_ratio) * 2  # 最小1， 0为自定义分配模式 # 小于0则是不分配一点给验证集
     tr_dir = f"./data/{prj_name}/{actor}/train"
     vl_dir = f"./data/{prj_name}/{actor}/val"
     tr_cnt = 0
