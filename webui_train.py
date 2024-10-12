@@ -404,7 +404,7 @@ with gr.Blocks() as demo:
                 choices=[("不分配", -1), ("1:1", 50), ("6:4", 60), ("7:3", 70), ("按序号分配", 0)],
                 label="预料训练集/验证集分配比例。选择不分配则全部分配训练集合",
                 info="注意：如果选择了“按照序号分配语料”，在同一音色设置多个序号不同的参考音。（如：XX_开心愤怒_001_YY, XX_开心愤怒_002_YY）奇数序号会分配给训练集，偶数分配测试集",
-                value=50,
+                value=-1,
             )
             re_init = gr.Checkbox(
                 value=True,
@@ -418,7 +418,7 @@ with gr.Blocks() as demo:
         )
         with gr.Row():
             max_epoch = gr.Number(
-                value=10,
+                value=1,
                 interactive=True,
                 precision=0,
                 label="训练总轮次",
@@ -448,9 +448,8 @@ with gr.Blocks() as demo:
                 info="SFT模型（SFT）和3秒复刻模型（zero-shot）",
                 scale=1,
             )
-            epoch = gr.Number(
+            epoch = gr.Text(
                 interactive=True,
-                precision=0,
                 label="模型轮次ID",
                 info="使用模型输出文件夹中训练第？轮次的模型",
                 scale=1,
