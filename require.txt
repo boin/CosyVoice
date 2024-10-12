@@ -11,7 +11,8 @@ librosa
 lightning
 modelscope
 omegaconf
-onnxruntime
+onnxruntime-gpu==1.16.0; sys_platform == 'linux'
+onnxruntime==1.16.0; sys_platform == 'darwin' or sys_platform == 'windows'
 openai-whisper
 psutil
 pyarrow
