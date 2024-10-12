@@ -96,6 +96,7 @@ def start_inference(
     train_list = output_path / "train" / "temp2" / "data.list"
     utt2data_list = Path(train_list).with_name("utt2data.list")
     llm_model = output_path / "models" / f"epoch_{epoch}_whole.pt"
+    llm_model = pre_model_path / "llm.pt" #just using default pt
     flow_model = pre_model_path / "flow.pt"
     hifigan_model = pre_model_path / "hift.pt"
     res_dir = output_path / "outputs" / id.rpartition("-")[0]
