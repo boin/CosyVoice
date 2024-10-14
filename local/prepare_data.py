@@ -7,12 +7,16 @@ import gradio as gr
 from pathlib import Path
 import math
 from tqdm import tqdm
+from hashlib import md5
+from tools.dayan import export_dayan_json
 from tools.auto_ttd import TTD_LIB, LIB_SUB
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger()
 
 # 240915_有声书_殓葬禁忌/02_E-Motion/Tag/古装_师父,GZJ_灵异/旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
+LNIK_DIR = "./data/.links"
+os.makedirs(LNIK_DIR, mode=0o777, exist_ok=True)
 
 
 def init_from_lib(prj_name, actor, split_ratio):
@@ -31,7 +35,9 @@ def init_from_lib(prj_name, actor, split_ratio):
     count = len(wavs)
     if count < 2:
         raise gr.Error("语料少于2条，无法导入")
-    stop_num = math.floor(count * split_ratio) * 2  # 最小1， 0为自定义分配模式 # 小于0则是不分配一点给验证集
+    stop_num = (
+        math.floor(count * split_ratio) * 2
+    )  # 最小1， 0为自定义分配模式 # 小于0则是不分配一点给验证集
     tr_dir = f"./data/{prj_name}/{actor}/train"
     vl_dir = f"./data/{prj_name}/{actor}/val"
     tr_cnt = 0
@@ -72,36 +78,60 @@ def prepare_normalize_txt(file):
     return txt_path
 
 
+def calculate_wav_hash(file_path, bytes_to_read=1024):
+    hash_md5 = md5()
+
+    with open(file_path, "rb") as f:
+        # 读取文件开头的字节
+        start_bytes = f.read(bytes_to_read)
+        hash_md5.update(start_bytes)
+
+        # 移动到文件末尾
+        f.seek(0, 2)  # 移动到文件末尾
+        file_size = f.tell()  # 获取文件大小
+
+        # 确保不越界，读取结尾的字节
+        if file_size > bytes_to_read:
+            f.seek(file_size - bytes_to_read)  # 移动到文件末尾前 bytes_to_read 字节
+            end_bytes = f.read(bytes_to_read)
+            hash_md5.update(end_bytes)
+
+    return hash_md5.hexdigest()
+
+
 def main():
     # src_dir = data/有声书_殓葬禁忌/古装_师父,GZJ_灵异/train
+    # train / val 文件夹会调用此方法2遍，请注意安全
     src_dir = Path(args.src_dir)
     stage = src_dir.name  # train
-    src_dir = src_dir.parents[1]  # data/有声书_殓葬禁忌
+    prj_dir = src_dir.parents[1]  # data/有声书_殓葬禁忌
     actor = args.actor  # 古装_师父,GZJ_灵异
 
-    wavs = list(glob.glob("{}/{}/{}/*wav".format(src_dir, actor, stage)))
+    folder_hash = md5()
+
+    wavs = list(glob.glob("{}/{}/{}/*wav".format(prj_dir, actor, stage)))
     # ./data/240915_有声书_殓葬禁忌/古装_师父,GZJ_灵异/train/旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
     if len(wavs) < 1 or args.force_flag == "True":
         if len(wavs) < 1:
-            logger.warning(f"{src_dir}/{actor}/{stage}/*wav 没有wav文件，开始初始化")
+            logger.warning(f"{prj_dir}/{actor}/{stage}/*wav 没有wav文件，开始初始化")
         if args.force_flag:
             logger.warning("强制重新初始化")
-            shutil.rmtree(Path(f"{src_dir}/{actor}/{stage}"), ignore_errors=True)
+            shutil.rmtree(Path(f"{prj_dir}/{actor}/{stage}"), ignore_errors=True)
         [tc, cc] = init_from_lib(
-            os.path.basename(src_dir), actor=actor, split_ratio=args.init_split_ratio
+            os.path.basename(prj_dir), actor=actor, split_ratio=args.init_split_ratio
         )
         logger.info(
-            f"{src_dir} {actor} {stage}初始化完毕， 训练集文件数量 {tc}， 测试集文件数量 {cc}"
+            f"{prj_dir} {actor} {stage}初始化完毕， 训练集文件数量 {tc}， 测试集文件数量 {cc}"
         )
-        wavs = list(glob.glob("{}/{}/{}/*wav".format(src_dir, actor, stage)))  # Re-Scan
+        wavs = list(glob.glob("{}/{}/{}/*wav".format(prj_dir, actor, stage)))  # Re-Scan
     utt2wav, utt2text, utt2spk, spk2utt = {}, {}, {}, {}
     for wav in tqdm(wavs):
         txt = prepare_normalize_txt(wav)
+        folder_hash.update(calculate_wav_hash(wav).encode("utf-8"))
         with open(txt, encoding="utf-8") as f:
             content = "".join(line.replace("\n", "") for line in f.readline())
-        utt = Path(
-            wav
-        ).stem  # 提取 utt 如 旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav  => 旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。
+        utt = Path(wav).stem
+        # 提取 utt 如 旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav  => 旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。
         spk = actor
         utt2wav[utt] = wav
         utt2text[utt] = content
@@ -122,7 +152,14 @@ def main():
     with open("{}/spk2utt".format(args.des_dir), "w") as f:
         for k, v in spk2utt.items():
             f.write("{} {}\n".format(k, " ".join(v)))
-    return
+    if stage == "train":
+        link_name = Path(LNIK_DIR) / folder_hash.hexdigest()
+        if os.path.exists(link_name):
+            os.remove(link_name)
+        os.symlink(f"../../{prj_dir}/{actor}", link_name)
+        export_dayan_json(
+            "{}/utt2spk".format(args.des_dir), f"{src_dir.parents[0]}/dayan.json"
+        )
 
 
 if __name__ == "__main__":

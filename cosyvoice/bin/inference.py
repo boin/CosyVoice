@@ -19,7 +19,7 @@ import logging
 import os
 import random
 import warnings
-
+from tempfile import NamedTemporaryFile
 import numpy as np
 import pyloudnorm as pyln
 import soundfile as sf
@@ -108,6 +108,12 @@ def main():
     model = CosyVoiceModel(configs["llm"], configs["flow"], configs["hift"])
     model.load(args.llm_model, args.flow_model, args.hifigan_model)
 
+    tts_text = args.tts_text
+    if not os.path.isfile(tts_text): # tts_text 是 raw_json
+         with NamedTemporaryFile(mode="rw", suffix=".json") as tmpf:
+            tmpf.write(tts_text)
+            tts_text = tmpf.name
+
     # 用参数中的合成文本，prompt数据初始化一个测试数据集并放到一个加载器（Torch.Dataloader）中
     test_dataset = Dataset(
         args.prompt_data,
@@ -115,7 +121,7 @@ def main():
         mode="inference",
         shuffle=False,
         partition=False,
-        tts_file=args.tts_text,
+        tts_file=tts_text,
         prompt_utt2data=args.prompt_utt2data,
     )
     test_data_loader = DataLoader(test_dataset, batch_size=None, num_workers=0)
