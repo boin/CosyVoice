@@ -110,8 +110,9 @@ def main():
 
     tts_text = args.tts_text
     if not os.path.isfile(tts_text): # tts_text 是 raw_json
-        tmpf = NamedTemporaryFile(mode="r+", suffix=".json")
+        tmpf = NamedTemporaryFile(mode="w+", suffix=".json")
         tmpf.write(tts_text)
+        tmpf.seek(0) # w模式不seek回去，后面都读不到内容
         tts_text = tmpf.name
 
     # 用参数中的合成文本，prompt数据初始化一个测试数据集并放到一个加载器（Torch.Dataloader）中
@@ -218,6 +219,7 @@ def main():
             f.write(f"{tts_key} {tts_fn}\n")
             f.flush()
     f.close()
+    print(tts_fn)
     logging.info(f"Result wav.scp saved in {fn}")
 
 
