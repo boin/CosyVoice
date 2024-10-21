@@ -12,7 +12,7 @@ from zipfile import ZipFile
 import gradio as gr
 import openpyxl
 
-from tools.auto_ttd import load_actor, load_projects, load_refrence
+from tools.auto_ttd import load_actor, load_projects, load_refrence, load_vc_actor
 from tools.emo_dialog_parser import dialog_parser
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
@@ -20,9 +20,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 # global vars
 wavs = {"v": 0}
+vcs = {"v": 0}
 projects = load_projects()
 hash = ""
 device = torch.cuda.is_available() and torch.cuda.get_device_name(0) or "CPU"
+
 
 def download_all_wavs(wavs, hash=hash):
     logging.debug(f"download all calle with:{wavs}, {hash}")
@@ -37,10 +39,28 @@ def download_all_wavs(wavs, hash=hash):
     return gr.DownloadButton(label="点击下载", value=fn, variant="stop")
 
 
-def load_wav_cache(project, hash):
-    # data/240915_有声书_殓葬禁忌/古装_师父,GZJ_灵异/output/outputs/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
-    pattern = f"data/{project}/*/*/*/*/{hash}*.wav"
+def download_all_vc_wavs():
+    # TODO
+    return gr.Info("敬请期待")
+
+
+def load_wav_cache(project, hash: str, type="gen") -> list[str]:
+    """
+    # data/.outputs/240915_有声书_殓葬禁忌/cosy/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
+    Args:
+        project (_type_): 240915_有声书_殓葬禁忌
+        hash (bool): _description_
+        type (str, optional): gen 或者 vc. Defaults to "gen".
+    Returns:
+        list[str]:  pathes of matched wavs
+    """
+    pattern = (
+        f"data/.outputs/{project}/cosy/*/{hash}*.wav"
+        if type == "gen"
+        else f"data/.outputs/{project}/vc/*/{hash}*.wav"
+    )
     files = glob.glob(pattern)
+
     wavs = {}
     for f in files:
         idx = Path(f).stem
@@ -56,18 +76,27 @@ def play_ref_audio(project, actor, voice):
     return audio_path
 
 
+def play_vc_ref_audio(project, actor):
+    # TODO
+    gr.Info("尽请期待")
+    return None
+
+
 def upload_textbook(text_url: str, project: str):
-    global hash, wavs
+    global hash, wavs, vcs
     hash = md5(Path(text_url).read_bytes()).hexdigest()  # save file hash for future use
     workbook = openpyxl.load_workbook(text_url, read_only=True)
     rows = [row for row in workbook.active.rows]
     if not len(rows) > 0:
         raise gr.Error("Excel文档为空！")
     lines = list(dialog_parser(rows))
-    new_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
+    all_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
+    all_vcs = load_wav_cache(project, hash, "vc")  # also vc
     wavs["v"] += 1
-    for k in new_wavs.keys():
-        wavs[k] = new_wavs[k]
+    vcs["v"] += 1
+    # 合并所有 WAV 和 VC
+    wavs.update(all_wavs)
+    vcs.update(all_vcs)
     return lines
 
 
@@ -95,10 +124,10 @@ def start_inference(
     train_list = output_path / "train" / "temp2" / "data.list"
     utt2data_list = Path(train_list).with_name("utt2data.list")
     llm_model = output_path / "models" / f"epoch_{epoch}_whole.pt"
-    llm_model = pre_model_path / "llm.pt" #just using default pt
+    llm_model = pre_model_path / "llm.pt"  # just using default pt
     flow_model = pre_model_path / "flow.pt"
     hifigan_model = pre_model_path / "hift.pt"
-    res_dir = output_path / "outputs" / id.rpartition("-")[0]
+    res_dir = Path(f"data/.outputs/{project_name}/cosy/") / id.rpartition("-")[0]
     res_dir.mkdir(exist_ok=True, parents=True)
     json_path = str(Path(res_dir) / "tts_text.json")
     with open(json_path, "wt", encoding="utf-8") as f:
@@ -148,6 +177,32 @@ def start_inference(
     return output_path
 
 
+def start_vc(project: str, actor: str, audio_path: str, tone_key):
+    # TODO
+    gr.Info("尽请期待")
+    print(audio_path)
+    return None
+    from gradio_client import Client
+
+    client = Client("http://ttd-server:7866/")
+    result = client.predict(
+        0,  # float (numeric value between 0 and 2333) in '请选择说话人id' Slider component
+        audio_path,  # str (filepath on your computer (or URL) of file) in '输入待处理音频文件' File component
+        tone_key,  # float  in '变调(整数, 半音数量, 升八度12降八度-12)' Number component
+        None,  # str (filepath on your computer (or URL) of file) in 'F0曲线文件, 可选, 一行一个音高, 代替默认F0及升降调' File component
+        "rmvpe",  # str  in '选择音高提取算法,输入歌声可用pm提速,harvest低音好但巨慢无比,crepe效果好但吃GPU,rmvpe效果最好且微吃GPU' Radio component
+        None,  # str  in '特征检索库文件路径,为空则使用下拉的选择结果' Textbox component
+        None,  # str (Option from: ['assets/indices/HM_IVF211_Flat_nprobe_1_HM_v2.index', 'assets/indices/LMC1_IVF569_Flat_nprobe_1_LMC1_v2.index', 'assets/indices/LMC_IVF569_Flat_nprobe_1_LMC_v2.index', 'assets/indices/ZSYD_1_IVF1509_Flat_nprobe_1_ZSYD_1_v2.index', 'assets/indices/ZSYD_2_IVF819_Flat_nprobe_1_ZSYD_2_v2.index', 'assets/indices/guliang-LHY_IVF778_Flat_nprobe_1_guliang-LHY_v2.index', 'assets/indices/hufa-DRE_IVF825_Flat_nprobe_1_hufa-DRE_v2.index', 'assets/indices/hufa-DRE_IVF829_Flat_nprobe_1_hufa-DRE_v2.index', 'assets/indices/longwang_songzhi_IVF816_Flat_nprobe_1_longwang_songzhi_v2.index', 'logs/HM/added_IVF211_Flat_nprobe_1_HM_v2.index']) in '自动检测index路径,下拉式选择(dropdown)' Dropdown component
+        0.75,  # float (numeric value between 0 and 1) in '检索特征占比' Slider component
+        3,  # float (numeric value between 0 and 7) in '>=3则使用对harvest音高识别的结果使用中值滤波，数值为滤波半径，使用可以削弱哑音' Slider component
+        0,  # float (numeric value between 0 and 48000) in '后处理重采样至最终采样率，0为不进行重采样' Slider component
+        0.25,  # float (numeric value between 0 and 1) in '输入源音量包络替换输出音量包络融合比例，越靠近1越使用输出包络' Slider component
+        0.33,  # float (numeric value between 0 and 0.5) in '保护清辅音和呼吸声，防止电音撕裂等artifact，拉满0.5不开启，调低加大保护力度但可能降低索引效果' Slider component
+        api_name="/infer_convert",
+    )
+    print(result)
+
+
 with gr.Blocks(fill_width=True) as demo:
     # wavs.value = upload_textbook(
     #     "data/Ch001_天命，将至_QC.xlsx", projects[-1], wavs.value
@@ -167,7 +222,7 @@ with gr.Blocks(fill_width=True) as demo:
                 outputs=[project],
             )
         with gr.Column(variant="panel"):
-            seed = gr.Number(value=0, label="随机推理种子", interactive=True)
+            seed = gr.Number(value=0, label="全局推理种子", interactive=True)
             with gr.Row():
                 gr.Button("\U0001f3b2").click(
                     lambda: random.randint(1, 1e8), outputs=seed
@@ -190,8 +245,20 @@ with gr.Blocks(fill_width=True) as demo:
             None,
             js="()=>{let g=document.querySelectorAll('.gen-btn');g.forEach(x=>x.click())}",
         )
-        dl_all = gr.DownloadButton("打包下载")
+        dl_all = gr.DownloadButton("打包下载推理")
         dl_all.click(lambda: download_all_wavs(wavs, hash), outputs=[dl_all])
+        vc_all = gr.Button("一键VC", variant="primary")
+        vc_all.click(
+            None,
+            js="()=>{return false;let g=document.querySelectorAll('.vc-btn');g.forEach(x=>!x.id&&x.click())}",
+        )
+        re_vc_all = gr.Button("全部重VC", variant="primary")
+        re_vc_all.click(
+            None,
+            js="()=>{return false;let g=document.querySelectorAll('.vc-btn');g.forEach(x=>x.click())}",
+        )
+        dl_vc_all = gr.DownloadButton("打包下载VC")
+        dl_vc_all.click(lambda: download_all_vc_wavs(wavs, hash), outputs=[dl_vc_all])
 
     @gr.render(inputs=[lines, project])
     def render_lines(_lines, _project):
@@ -201,9 +268,10 @@ with gr.Blocks(fill_width=True) as demo:
         task_list = _lines
         # print(hash, task_list[0], _wavs, "\n")
         for task in task_list:
-            #print(task)
+            # print(task)
             idx = f'{hash}-{task["id"]}'
             wav_url = idx in wavs.keys() and wavs[idx] or None
+            vc_url = idx in vcs.keys() and vcs[idx] or None
             with gr.Row():
                 with gr.Column():
                     with gr.Row():
@@ -216,31 +284,37 @@ with gr.Blocks(fill_width=True) as demo:
                             label="metadata",
                             show_label=False,
                             container=False,
-                            scale=0,
+                            scale=1,
+                            min_width=100,
                         )
 
                         text = gr.Textbox(
                             task["text"],
                             show_label=False,
                             container=False,
+                            scale=6,
                         )
-                        gen_btn = gr.Button(
-                            "生成",
+                        # seed area
+                        _seed = gr.Textbox(
+                            None,
+                            container=False,
+                            show_label=False,
+                            min_width=80,
+                            interactive=True,
                             scale=0,
-                            variant="primary",
-                            elem_classes=["gen-btn"],
-                            elem_id=idx if wav_url else "",
                         )
-                        preview_btn = gr.Button(
-                            value="预览输出",
-                            scale=0,
+                        gr.Button("\U0001f3b2", min_width=1, scale=0).click(
+                            lambda: random.randint(1, 1e8), outputs=_seed
                         )
-
+                        gr.Button("X", min_width=2, scale=0).click(
+                            lambda: None, outputs=_seed
+                        )
                     with gr.Row():
                         gr.Text(
-                            f'{task["emo_1"]} {task["emo_2"]} [ V: {task["V"]} A: {task["A"]} D: {task["D"]} ]',
+                            f'{task["emo_1"]} {task["emo_2"]} V: {float(task["V"])*100:.1f} A: {float(task["A"])*100:.1f} D: {float(task["D"])*100:.1f}',
                             show_label=False,
                             container=False,
+                            scale=2,
                         )
                         actors = load_actor(task["actor"], _project)
                         # print("actors:", actors)
@@ -249,6 +323,7 @@ with gr.Blocks(fill_width=True) as demo:
                             value=actors[0],
                             show_label=False,
                             container=False,
+                            scale=2,
                         )
                         refrences = load_refrence(
                             _project,
@@ -261,11 +336,57 @@ with gr.Blocks(fill_width=True) as demo:
                             value=refrences[0],
                             show_label=False,
                             container=False,
+                            scale=6,
                         )
+                        gen_btn = gr.Button(
+                            "生成",
+                            scale=0,
+                            variant="primary",
+                            elem_classes=["gen-btn"],
+                            elem_id=idx if wav_url else "",
+                        )
+                        preview_btn = gr.Button(
+                            value="预览输出",
+                            scale=0,
+                        )
+                    with gr.Row():
+                        vc_actors = load_vc_actor(actor, _project)
+                        gr.Text(
+                            "VC音色选择 [声调，模型] ",
+                            show_label=False,
+                            container=False,
+                            scale=2,
+                            min_width=100,
+                        )
+                        tone_key = gr.Dropdown(
+                            choices=[(i, str(i)) for i in range(-5, 5)],
+                            value="0",
+                            show_label=False,
+                            container=False,
+                        )
+                        vc_actor = gr.Dropdown(
+                            show_label=False,
+                            container=False,
+                            choices=vc_actors,
+                            value=vc_actors[0],
+                            scale=8,
+                        )
+                        vc_btn = gr.Button(
+                            "生成VC",
+                            scale=0,
+                            variant="primary",
+                            elem_classes=["vc-btn"],
+                            elem_id=idx if vc_url else "",
+                        )
+                        preview_vc_btn = gr.Button(
+                            value="预览VC",
+                            scale=0,
+                        )
+
                 with gr.Column(scale=0):
                     preview_audio = gr.Audio(
                         # container=False,
-                        label="输出预览",
+                        label="预览",
                         show_download_button=True,
                         show_share_button=False,
                         sources=[],
@@ -279,9 +400,23 @@ with gr.Blocks(fill_width=True) as demo:
 
                 gen_btn.click(
                     start_inference,
-                    inputs=[project, output_dir, actor, text, ref_ctl, id, seed],
+                    inputs=[
+                        project,
+                        output_dir,
+                        actor,
+                        text,
+                        ref_ctl,
+                        id,
+                        _seed if _seed.value else seed,
+                    ],
                     outputs=[preview_audio],
                 )
+                vc_btn.click(reset_audio, outputs=preview_audio).then(
+                    start_vc,
+                    inputs=[project, vc_actor, tone_key, preview_audio],
+                    outputs=[preview_audio],
+                )
+                preview_vc_btn.click(lambda: vc_url, outputs=preview_audio)
                 gr.on(
                     triggers=[ref_ctl.focus, ref_ctl.select],
                     fn=play_ref_audio,
@@ -289,10 +424,18 @@ with gr.Blocks(fill_width=True) as demo:
                     outputs=[preview_audio],
                 )
                 gr.on(
+                    triggers=[vc_actor.focus, vc_actor.select],
+                    fn=play_vc_ref_audio,
+                    inputs=[project, vc_actor],
+                    outputs=[preview_audio],
+                )
+                gr.on(
                     triggers=[preview_audio.clear, preview_btn.click],
                     fn=reset_audio,
                     outputs=preview_audio,
                 )
+            with gr.Row():
+                gr.HTML("<hr/>")
 
 
 if __name__ == "__main__":

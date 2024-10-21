@@ -126,3 +126,8 @@ def load_actor(actor: str, project_name):
 
     # print("globing:", content, "got:", spks)
     return spks
+
+def load_vc_actor(actor, project_name):
+    vcs = [None]
+
+    return vcs
