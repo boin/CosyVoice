@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import random
-import torch
 import subprocess
 from hashlib import md5
 from pathlib import Path
@@ -11,9 +10,11 @@ from zipfile import ZipFile
 
 import gradio as gr
 import openpyxl
+import torch
 
-from tools.auto_ttd import load_actor, load_projects, load_refrence, load_vc_actor
+from tools.auto_ttd import load_actor, load_projects, load_refrence
 from tools.emo_dialog_parser import dialog_parser
+from tools.vc import load_vc_actor, load_vc_actor_ref, request_vc
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -37,11 +38,6 @@ def download_all_wavs(wavs, hash=hash):
     zip.close()
     logging.info(f"zipfile {fn} writed. size {(Path(fn).lstat()).st_size}")
     return gr.DownloadButton(label="点击下载", value=fn, variant="stop")
-
-
-def download_all_vc_wavs():
-    # TODO
-    return gr.Info("敬请期待")
 
 
 def load_wav_cache(project, hash: str, type="gen") -> list[str]:
@@ -77,9 +73,8 @@ def play_ref_audio(project, actor, voice):
 
 
 def play_vc_ref_audio(project, actor):
-    # TODO
-    gr.Info("尽请期待")
-    return None
+    path = load_vc_actor_ref(project, actor)
+    return path
 
 
 def upload_textbook(text_url: str, project: str):
@@ -177,30 +172,15 @@ def start_inference(
     return output_path
 
 
-def start_vc(project: str, actor: str, audio_path: str, tone_key):
-    # TODO
-    gr.Info("尽请期待")
-    print(audio_path)
-    return None
-    from gradio_client import Client
-
-    client = Client("http://ttd-server:7866/")
-    result = client.predict(
-        0,  # float (numeric value between 0 and 2333) in '请选择说话人id' Slider component
-        audio_path,  # str (filepath on your computer (or URL) of file) in '输入待处理音频文件' File component
-        tone_key,  # float  in '变调(整数, 半音数量, 升八度12降八度-12)' Number component
-        None,  # str (filepath on your computer (or URL) of file) in 'F0曲线文件, 可选, 一行一个音高, 代替默认F0及升降调' File component
-        "rmvpe",  # str  in '选择音高提取算法,输入歌声可用pm提速,harvest低音好但巨慢无比,crepe效果好但吃GPU,rmvpe效果最好且微吃GPU' Radio component
-        None,  # str  in '特征检索库文件路径,为空则使用下拉的选择结果' Textbox component
-        None,  # str (Option from: ['assets/indices/HM_IVF211_Flat_nprobe_1_HM_v2.index', 'assets/indices/LMC1_IVF569_Flat_nprobe_1_LMC1_v2.index', 'assets/indices/LMC_IVF569_Flat_nprobe_1_LMC_v2.index', 'assets/indices/ZSYD_1_IVF1509_Flat_nprobe_1_ZSYD_1_v2.index', 'assets/indices/ZSYD_2_IVF819_Flat_nprobe_1_ZSYD_2_v2.index', 'assets/indices/guliang-LHY_IVF778_Flat_nprobe_1_guliang-LHY_v2.index', 'assets/indices/hufa-DRE_IVF825_Flat_nprobe_1_hufa-DRE_v2.index', 'assets/indices/hufa-DRE_IVF829_Flat_nprobe_1_hufa-DRE_v2.index', 'assets/indices/longwang_songzhi_IVF816_Flat_nprobe_1_longwang_songzhi_v2.index', 'logs/HM/added_IVF211_Flat_nprobe_1_HM_v2.index']) in '自动检测index路径,下拉式选择(dropdown)' Dropdown component
-        0.75,  # float (numeric value between 0 and 1) in '检索特征占比' Slider component
-        3,  # float (numeric value between 0 and 7) in '>=3则使用对harvest音高识别的结果使用中值滤波，数值为滤波半径，使用可以削弱哑音' Slider component
-        0,  # float (numeric value between 0 and 48000) in '后处理重采样至最终采样率，0为不进行重采样' Slider component
-        0.25,  # float (numeric value between 0 and 1) in '输入源音量包络替换输出音量包络融合比例，越靠近1越使用输出包络' Slider component
-        0.33,  # float (numeric value between 0 and 0.5) in '保护清辅音和呼吸声，防止电音撕裂等artifact，拉满0.5不开启，调低加大保护力度但可能降低索引效果' Slider component
-        api_name="/infer_convert",
-    )
-    print(result)
+def start_vc(project: str, actor: str, audio_path: str, id, tone_key=0, vcs=vcs):
+    if not audio_path:
+        gr.Error("没有已生成的推理音频，无法VC")
+    res_dir = Path(f"./data/.outputs/{project}/vc/{id.rpartition('-')[0]}")
+    res_dir.mkdir(exist_ok=True, parents=True)
+    output_path = str(Path(res_dir) / f"{id}.wav")
+    request_vc(project, actor, audio_path, output_path, tone_key)
+    vcs[id] = output_path
+    return output_path
 
 
 with gr.Blocks(fill_width=True) as demo:
@@ -238,27 +218,27 @@ with gr.Blocks(fill_width=True) as demo:
         gen_all = gr.Button("一键推理", variant="primary")
         gen_all.click(
             None,
-            js="()=>{let g=document.querySelectorAll('.gen-btn');g.forEach(x=>!x.id&&x.click())}",
+            js="()=>{[...document.querySelectorAll('.gen-btn')].reduce((p,e)=>p.then(()=>(!e.id&&e.click(),new Promise(r=>setTimeout(r, 50)))),Promise.resolve());}",
         )
         re_gen_all = gr.Button("全部重推理", variant="primary")
         re_gen_all.click(
             None,
-            js="()=>{let g=document.querySelectorAll('.gen-btn');g.forEach(x=>x.click())}",
+            js="()=>{[...document.querySelectorAll('.gen-btn')].reduce((p,e)=>p.then(()=>(e.click(),new Promise(r=>setTimeout(r, 50)))),Promise.resolve());}",
         )
         dl_all = gr.DownloadButton("打包下载推理")
         dl_all.click(lambda: download_all_wavs(wavs, hash), outputs=[dl_all])
         vc_all = gr.Button("一键VC", variant="primary")
         vc_all.click(
             None,
-            js="()=>{return false;let g=document.querySelectorAll('.vc-btn');g.forEach(x=>!x.id&&x.click())}",
+            js="()=>{[...document.querySelectorAll('.vc-btn')].reduce((p,e)=>p.then(()=>(!e.id&&e.click(),new Promise(r=>setTimeout(r, 50)))),Promise.resolve());}",
         )
         re_vc_all = gr.Button("全部重VC", variant="primary")
         re_vc_all.click(
             None,
-            js="()=>{return false;let g=document.querySelectorAll('.vc-btn');g.forEach(x=>x.click())}",
+            js="()=>{[...document.querySelectorAll('.vc-btn')].reduce((p,e)=>p.then(()=>(e.click(),new Promise(r=>setTimeout(r, 50)))),Promise.resolve());}",
         )
         dl_vc_all = gr.DownloadButton("打包下载VC")
-        dl_vc_all.click(lambda: download_all_vc_wavs(wavs, hash), outputs=[dl_vc_all])
+        dl_vc_all.click(lambda: download_all_wavs(vcs, hash), outputs=[dl_vc_all])
 
     @gr.render(inputs=[lines, project])
     def render_lines(_lines, _project):
@@ -350,7 +330,7 @@ with gr.Blocks(fill_width=True) as demo:
                             scale=0,
                         )
                     with gr.Row():
-                        vc_actors = load_vc_actor(actor, _project)
+                        vc_actors = load_vc_actor(_project, task["actor"])
                         gr.Text(
                             "VC音色选择 [声调，模型] ",
                             show_label=False,
@@ -359,7 +339,7 @@ with gr.Blocks(fill_width=True) as demo:
                             min_width=100,
                         )
                         tone_key = gr.Dropdown(
-                            choices=[(i, str(i)) for i in range(-5, 5)],
+                            choices=[(i, str(i)) for i in range(5, -6, -1)],
                             value="0",
                             show_label=False,
                             container=False,
@@ -392,6 +372,7 @@ with gr.Blocks(fill_width=True) as demo:
                         sources=[],
                         scale=0,
                         value=wav_url,
+                        type="filepath",
                     )
 
                 # to preserve idx variable
@@ -413,10 +394,12 @@ with gr.Blocks(fill_width=True) as demo:
                 )
                 vc_btn.click(reset_audio, outputs=preview_audio).then(
                     start_vc,
-                    inputs=[project, vc_actor, tone_key, preview_audio],
+                    inputs=[project, vc_actor, preview_audio, id, tone_key],
                     outputs=[preview_audio],
                 )
-                preview_vc_btn.click(lambda: vc_url, outputs=preview_audio)
+                preview_vc_btn.click(
+                    lambda id=idx: gr.Audio(vcs[id]) if id in vcs else None, outputs=preview_audio
+                )
                 gr.on(
                     triggers=[ref_ctl.focus, ref_ctl.select],
                     fn=play_ref_audio,

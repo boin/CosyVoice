@@ -16,6 +16,7 @@ services:
       - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Voices:/opt/CosyVoice/voices
       - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Train:/opt/CosyVoice/data
       - /home/docker/mnt/TTD-Data/cosy-voice/pretrained_models:/opt/CosyVoice/pretrained_models
+      - /home/docker/mnt/TeamSpace/TTD-Space/applications/rvc-web/assets/weights:/opt/CosyVoice/data/.vc_weights
     working_dir: /opt/CosyVoice
     shm_size: 32G
     stdin_open: true
