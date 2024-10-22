@@ -31,7 +31,7 @@ def request_vc(project_name, sid, audio_path, result_name, tone_key):
 
     # 定义请求的 payload
     request = {
-        "actor": sid,  # 确保这里的值是有效的
+        "actor": f'{project_name}/{sid}',  # 确保这里的值是有效的
         "index": tone_key,  # 确保这里的值是有效的
     }
 
