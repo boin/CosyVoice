@@ -65,10 +65,8 @@ def findNearestVAD(vad: [str or int, str or int, str or int], voices: [str], cou
     vad = [int(vad[0]), int(vad[1]), int(vad[2])]
     logging.debug(f"vad: {vad}")
 
-    d = ((vad_tree - vad) ** 2).sum(axis=1)  # compute distances
-    ndx = d.argsort()  # indirect sort
-
-    result = find_nearest_match_adv(vad, vad_tree, count)  # based from ADV
+    #result = find_nearest_match_adv(vad, vad_tree, count)  # based from ADV
+    result = find_nearest_match_euclidean(vad, vad_tree, count)  # based from euclidean
 
     logging.debug(f"与 VAD: {vad} 最相近的{count}个 VAD :  {result}")
 
