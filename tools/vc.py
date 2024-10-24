@@ -11,12 +11,18 @@ def load_vc_actor(project_name: str, actor: str | None = None):
 
     for f in disk_actors:
         if f.is_file() and not f.name.startswith(".") and f.name.endswith(".pth"):
-            role = Path(f).stem.split("_")[0]
+            role = Path(f).stem.split("_")[0]  # 【师父,师傅】_ZZJ,MY,XXXX_+3_001
             if actor and actor in role:
                 actors.insert(0, Path(f).stem)  # 将匹配的角色放在开头，不带扩展名
             else:
                 actors.append(Path(f).stem)  # 其他角色放在末尾，不带扩展名
     return actors
+
+
+def load_keytone_from_actor(actor: str) -> str | None:
+    # 师父,师傅_ZZJ,MY,XXXX_+3_001
+    parts = actor.split("_")
+    return parts[2] if len(parts) == 4 else None
 
 
 def load_vc_actor_ref(project_name, actor):
@@ -31,7 +37,7 @@ def request_vc(project_name, sid, audio_path, result_name, tone_key):
 
     # 定义请求的 payload
     request = {
-        "actor": f'{project_name}/{sid}',  # 确保这里的值是有效的
+        "actor": f"{project_name}/{sid}",  # 确保这里的值是有效的
         "index": tone_key,  # 确保这里的值是有效的
     }
 

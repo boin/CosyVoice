@@ -14,7 +14,12 @@ import torch
 
 from tools.auto_ttd import load_actor, load_projects, load_refrence
 from tools.emo_dialog_parser import dialog_parser
-from tools.vc import load_vc_actor, load_vc_actor_ref, request_vc
+from tools.vc import (
+    load_keytone_from_actor,
+    load_vc_actor,
+    load_vc_actor_ref,
+    request_vc,
+)
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -339,8 +344,8 @@ with gr.Blocks(fill_width=True) as demo:
                             min_width=100,
                         )
                         tone_key = gr.Dropdown(
-                            choices=[(i, str(i)) for i in range(5, -6, -1)],
-                            value="0",
+                            choices=[f"+{i}" if i > 0 else i for i in range(5, -6, -1)],
+                            value=load_keytone_from_actor(vc_actors[0]),
                             show_label=False,
                             container=False,
                         )
@@ -398,7 +403,11 @@ with gr.Blocks(fill_width=True) as demo:
                     outputs=[preview_audio],
                 )
                 preview_vc_btn.click(
-                    lambda id=idx: gr.Audio(vcs[id]) if id in vcs else None, outputs=preview_audio
+                    lambda id=idx: gr.Audio(vcs[id]) if id in vcs else None,
+                    outputs=preview_audio,
+                )
+                vc_actor.change(
+                    load_keytone_from_actor, inputs=vc_actor, outputs=tone_key
                 )
                 gr.on(
                     triggers=[ref_ctl.focus, ref_ctl.select],
