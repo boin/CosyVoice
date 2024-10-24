@@ -17,6 +17,7 @@ from __future__ import print_function
 import argparse
 import logging
 import os
+import json
 import random
 import warnings
 from tempfile import NamedTemporaryFile
@@ -36,6 +37,12 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
+def parse_tts_text(text: str):
+    try:
+        json.loads(text)
+    except Exception:
+        text = text.lstrip("'").rstrip("'")
+    return text
 
 def get_args():
     parser = argparse.ArgumentParser(description="inference with your model")
@@ -110,9 +117,11 @@ def main():
 
     tts_text = args.tts_text
     if not os.path.isfile(tts_text): # tts_text 是 raw_json
+        tts_text = parse_tts_text(tts_text)
         tmpf = NamedTemporaryFile(mode="w+", suffix=".json")
         tmpf.write(tts_text)
         tmpf.seek(0) # w模式不seek回去，后面都读不到内容
+        logging.info(f'{tts_text} is not file. write it to {tmpf.name}')
         tts_text = tmpf.name
 
     # 用参数中的合成文本，prompt数据初始化一个测试数据集并放到一个加载器（Torch.Dataloader）中
