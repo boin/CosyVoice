@@ -101,7 +101,7 @@ def upload_textbook(text_url: str, project: str):
 
 
 def start_inference(
-    project_name, output_path, actor, text, voice, id: str, r_seed, wavs=wavs
+    project_name, output_path, actor, text, voice, id: str, r_seed, g_seed, wavs=wavs
 ):
     """开始推理
     Args:
@@ -111,6 +111,7 @@ def start_inference(
         voice (str): 选定音色
         id (str): uniqid
         r_seed (str): 随机种子
+        g_seed (str): 全局随机种子
     """
     # 240915_有声书_殓葬禁忌  旁白_脸红_002_507828_并且在峨眉危难之际自动出现，化解危机。  Says: 我，是一名殓葬师！ {}
     if not text:
@@ -157,7 +158,7 @@ def start_inference(
         "--result_dir",
         str(res_dir),
         "--rseed",
-        str(r_seed),
+        str(r_seed or g_seed),
         "--file_name",
         str(id),
     ]
@@ -393,7 +394,8 @@ with gr.Blocks(fill_width=True) as demo:
                         text,
                         ref_ctl,
                         id,
-                        _seed if _seed.value else seed,
+                        _seed,
+                        seed,
                     ],
                     outputs=[preview_audio],
                 )
