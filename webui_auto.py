@@ -345,7 +345,7 @@ with gr.Blocks(fill_width=True) as demo:
                             min_width=100,
                         )
                         tone_key = gr.Dropdown(
-                            choices = [f"{i:+d}" for i in range(5, -6, -1)],
+                            choices = [f"{i:+d}" if i != 0 else "0" for i in range(5, -6, -1)],
                             value=load_keytone_from_actor(vc_actors[0]),
                             show_label=False,
                             container=False,
