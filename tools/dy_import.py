@@ -13,18 +13,20 @@ def make_ref_link(actor, voice: str | None = None) -> str:
 
 
 def make_voices(actor, voices: dict):
-    result = {}
+    result = {"name": voices["name"], "voices": {}}
     best_voice = ""
     intro_file = Path(base_folder) / actor / "intro.wav"
-
+    result["src"] = make_ref_link(actor)
+    voices = voices["voices"]
     for key, voice in voices.items():  # 使用 items() 遍历字典
         voice["src"] = make_ref_link(actor, key)
-        result[key] = voice
+        result["voices"][key] = voice
         if len(key) > len(best_voice):
             best_voice = key
     # 复制最佳声音到 intro_file
     best_file = Path(base_folder) / actor / "train" / f"{best_voice}.wav"
-    intro_file.write_bytes(best_file.read_bytes())
+    if best_file.stat().st_size != intro_file.stat().st_size:
+        intro_file.write_bytes(best_file.read_bytes())
     return result
 
 
@@ -32,10 +34,8 @@ def load_and_clean_actors():
     actors = []
     for d in os.scandir(base_folder):
         if not d.is_dir():  # 如果不是目录
-            if d.is_symlink() and not d.exists():  # 检查是否是失效的符号链接
-                Path(d).unlink()  # 删除失效的符号链接
+            Path(d).unlink()  # 删除失效的符号链接
             continue
-
         # 如果是有效的目录，添加到 actors 列表
         actors.append(d.name)
     return actors
