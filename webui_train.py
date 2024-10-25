@@ -71,7 +71,6 @@ def refresh_voice(project_input_dir, output_path, actor):
     return gr.Dropdown(choices=voices)
 
 
-# TODO refractor to load ttd_lib file
 def load_refrence_wav(refrence_name, project_input_dir, actor):
     [spkr, voice] = refrence_name.split(" - ")
     path = ttd.load_refrence_wav(project_input_dir, actor, voice)
@@ -287,7 +286,11 @@ def inference(
     output_path = data_path(output_path, project_input_dir, actor)
     train_list = os.path.join(output_path, "train", "temp2", "data.list")
     utt2data_list = Path(train_list).with_name("utt2data.list")
-    llm_model = epoch and os.path.join(output_path, "models", f"epoch_{epoch}_whole.pt") or os.path.join(pre_model_path, "llm.pt")
+    llm_model = (
+        epoch
+        and os.path.join(output_path, "models", f"epoch_{epoch}_whole.pt")
+        or os.path.join(pre_model_path, "llm.pt")
+    )
     flow_model = os.path.join(pre_model_path, "flow.pt")
     hifigan_model = os.path.join(pre_model_path, "hift.pt")
     res_dir = Path(output_path) / "outputs"
@@ -401,7 +404,13 @@ with gr.Blocks() as demo:
     with gr.Tab("训练"):
         with gr.Row():
             split_ratio = gr.Radio(
-                choices=[("不分配", -1), ("1:1", 50), ("6:4", 60), ("7:3", 70), ("按序号分配", 0)],
+                choices=[
+                    ("不分配", -1),
+                    ("1:1", 50),
+                    ("6:4", 60),
+                    ("7:3", 70),
+                    ("按序号分配", 0),
+                ],
                 label="预料训练集/验证集分配比例。选择不分配则全部分配训练集合",
                 info="注意：如果选择了“按照序号分配语料”，在同一音色设置多个序号不同的参考音。（如：XX_开心愤怒_001_YY, XX_开心愤怒_002_YY）奇数序号会分配给训练集，偶数分配测试集",
                 value=-1,
