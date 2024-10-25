@@ -1,5 +1,6 @@
 import requests
 import os
+import logging as logger
 from pathlib import Path
 
 VC_WEIGHT_ROOT = "./data/.vc_weights"
@@ -30,30 +31,57 @@ def load_vc_actor_ref(project_name, actor):
     return path if path.is_file() else None
 
 
-def request_vc(project_name, sid, audio_path, result_name, tone_key):
-    # audio_path = 'http://ttd-server/file/cosy-voice/output/5b/d9/5bd95bc0-3359-45e6-bd87-243de0d46138.wav'
-    # 定义要测试的 URL
+def request_vc(
+    project_name: str, sid: str, audio_path: str, result_name: str, tone_key: str
+) -> (int, str):
+    """
+    发送语音转换请求并保存结果。
+     audio_path = ‘http://ttd-server/file/cosy-voice/output/5b/d9/5bd95bc0-3359-45e6-bd87-243de0d46138.wav’
+     定义要测试的 URL
+
+    参数:
+    project_name (str): 项目名称。
+    sid (str): 语音 ID。
+    audio_path (str): 输入音频文件的路径。
+    result_name (str): 输出结果文件的名称。
+    tone_key (str): 音调键。
+
+    返回:
+    tuple: 状态码和消息。
+    """
+
     url = "http://ttd-server:7878/infer_vc"
 
-    # 定义请求的 payload
-    request = {
-        "actor": f"{project_name}/{sid}",  # 确保这里的值是有效的
-        "index": tone_key,  # 确保这里的值是有效的
+    # 请求的 payload
+    request_payload = {
+        "actor": f"{project_name}/{sid}",
+        "index": tone_key,
     }
 
-    # 发送 POST 请求
-    with open(audio_path, "rb") as f:
-        files = {"file": f}  # 文件上传
-        try:
-            response = requests.post(url, params=request, files=files)
+    try:
+        with open(audio_path, "rb") as audio_file:
+            files = {"file": audio_file}
+            response = requests.post(url, params=request_payload, files=files)
             response.raise_for_status()  # 如果请求失败，抛出异常
+
             # 将内容写入文件
             with open(result_name, "wb") as wav_file:
                 wav_file.write(response.content)
-            print("Response length:", len(response.content))
-        except requests.exceptions.HTTPError as http_err:
-            print(
-                f"HTTP error occurred: {http_err} - Response content: {response.text}"
-            )
-        except requests.exceptions.RequestException as e:
-            print("Error:", e)
+
+            logger.info("Response length: %d", len(response.content))
+            return 0, "Success"
+
+    except requests.exceptions.HTTPError as http_err:
+        message = f"HTTP error occurred: {http_err} - Response content: {response.text}"
+        logger.error(message)
+        return 1, message
+
+    except requests.exceptions.RequestException as e:
+        message = f"Request error: {e}"
+        logger.error(message)
+        return 1, message
+
+    except Exception as e:
+        message = f"An unexpected error occurred: {e}"
+        logger.error(message)
+        return 1, message

@@ -54,7 +54,7 @@ def find_nearest_match_adv(target, coordinates, count):
     return nearest_coords
 
 
-# 取得最相近的VAD count结果
+# 主要入口，取得最相近的VAD count结果
 def findNearestVAD(vad: [str or int, str or int, str or int], voices: [str], count=10):
     tree_obj = init_vad_tree(voices)  # text.splitlines()
     # print(tree_obj)
@@ -65,7 +65,7 @@ def findNearestVAD(vad: [str or int, str or int, str or int], voices: [str], cou
     vad = [int(vad[0]), int(vad[1]), int(vad[2])]
     logging.debug(f"vad: {vad}")
 
-    #result = find_nearest_match_adv(vad, vad_tree, count)  # based from ADV
+    # result = find_nearest_match_adv(vad, vad_tree, count)  # based from ADV
     result = find_nearest_match_euclidean(vad, vad_tree, count)  # based from euclidean
 
     logging.debug(f"与 VAD: {vad} 最相近的{count}个 VAD :  {result}")
@@ -90,7 +90,33 @@ def init_vad_tree(voice_list):
     return tree_obj
 
 
-def findNearestKW(target, strings):
+def findNearestASR(target: str, strings: list[str]) -> str | None:
+    """
+    查找给定字符串列表中与目标字符串包含的感叹号或问号相匹配的最近字符串。
+
+    参数:
+    target (str): 目标字符串，可能包含感叹号或问号。
+    strings (list[str]): 字符串列表，函数将在其中查找匹配的字符串。
+
+    返回:
+    str | None: 如果找到匹配的字符串，则返回该字符串；如果没有找到匹配，则返回 None。
+    """
+
+    exclamation = "！"  # 感叹号
+    question = "？"  # 问号
+
+    for asr in strings:
+        # 如果目标和当前字符串都包含感叹号，则返回当前字符串
+        if exclamation in target and exclamation in asr:
+            return asr
+        # 如果目标和当前字符串都包含问号，则返回当前字符串
+        if question in target and question in asr:
+            return asr
+
+    return None  # 如果没有找到匹配，返回 None
+
+
+def findNearestKW(target: str, strings: list[str]) -> str:
     """
         首先计算每个字符串与目标字符串的交集大小，然后筛选出交集大小相同的字符串，最后计算这些字符串的顺序匹配分数，返回分数最高的字符串。
     Args:

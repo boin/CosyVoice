@@ -184,7 +184,9 @@ def start_vc(project: str, actor: str, audio_path: str, id, tone_key=0, vcs=vcs)
     res_dir = Path(f"./data/.outputs/{project}/vc/{id.rpartition('-')[0]}")
     res_dir.mkdir(exist_ok=True, parents=True)
     output_path = str(Path(res_dir) / f"{id}.wav")
-    request_vc(project, actor, audio_path, output_path, tone_key)
+    status, message = request_vc(project, actor, audio_path, output_path, tone_key)
+    if status == 1:
+        gr.Error(f"VC 失败：{message}")
     vcs[id] = output_path
     return output_path
 
@@ -315,7 +317,8 @@ with gr.Blocks(fill_width=True) as demo:
                             _project,
                             actors[0],  # use parsed actorname than original
                             [task["V"], task["A"], task["D"]],
-                            emo_kw=f'{task["emo_1"]}{task["emo_2"]}',
+                            emo_kw=f'{task["emo_1"]}{task["emo_2"]}', # for kwmatch
+                            text=task["text"], # for asr match
                         )
                         ref_ctl = gr.Dropdown(
                             choices=refrences,
@@ -345,7 +348,9 @@ with gr.Blocks(fill_width=True) as demo:
                             min_width=100,
                         )
                         tone_key = gr.Dropdown(
-                            choices = [f"{i:+d}" if i != 0 else "0" for i in range(5, -6, -1)],
+                            choices=[
+                                f"{i:+d}" if i != 0 else "0" for i in range(5, -6, -1)
+                            ],
                             value=load_keytone_from_actor(vc_actors[0]),
                             show_label=False,
                             container=False,

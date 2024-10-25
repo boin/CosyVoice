@@ -2,7 +2,7 @@ import glob
 import os
 from pathlib import Path
 
-from tools.vad import findNearestKW, findNearestVAD
+from tools.vad import findNearestKW, findNearestVAD, findNearestASR
 
 TTD_LIB = "./ttd_lib/"
 LIB_SUB = "02_E-Motion/Tag"
@@ -62,10 +62,12 @@ def load_refrence(
     actor: str,
     emo: [str or int, str or int, str or int] or None,
     emo_kw: str,
+    text: str,
 ):
     """加载最接近的参考音，
         1. 使用VAD筛选
-        2. 关键KeyWord匹配
+        2. 关键KeyWord匹配内容
+        3. ASR文本匹配  如！？直接匹配对应语料
         旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
     Args:
         actor (str): 古装_旁白,ZYH,_灵异
@@ -89,6 +91,9 @@ def load_refrence(
     # kw_voice = findNearestKW(emo_kw, content)
     # if kw_voice != voices[0]: #dont add same voice
     #    voices.insert(0, kw_voice) # KW voice first
+    asr_match = findNearestASR(text, content)
+    if asr_match and asr_match != voices[0]:
+        voices.insert(0, voices.pop(voices.index(asr_match)))
     return [f.split(" ")[0] for f in voices]
 
 
