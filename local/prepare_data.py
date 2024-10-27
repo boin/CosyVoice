@@ -156,7 +156,8 @@ def main():
         link_name = Path(LNIK_DIR) / folder_hash.hexdigest()
         if os.path.exists(link_name):
             os.remove(link_name)
-        os.symlink(f"../../{prj_dir}/{actor}", link_name)
+        # ../models/240915_有声书_殓葬禁忌/古装_老八,DZVC_灵异 -> 9d87535ca928d1a5214dd7f84b39d6ad
+        os.symlink(f"../models/{prj_dir}/{actor}", link_name)
         export_dayan_json(
             "{}/utt2spk".format(args.des_dir), f"{src_dir.parents[0]}/dayan.json"
         )
