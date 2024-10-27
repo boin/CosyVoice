@@ -110,7 +110,7 @@ def main():
     folder_hash = md5()
 
     wavs = list(glob.glob("{}/{}/{}/*wav".format(prj_dir, actor, stage)))
-    # ./data/240915_有声书_殓葬禁忌/古装_师父,GZJ_灵异/train/旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
+    # ./data/models/240915_有声书_殓葬禁忌/ 古装_师父,GZJ_灵异/ train/ 旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
     if len(wavs) < 1 or args.force_flag == "True":
         if len(wavs) < 1:
             logger.warning(f"{prj_dir}/{actor}/{stage}/*wav 没有wav文件，开始初始化")
@@ -157,7 +157,7 @@ def main():
         if os.path.exists(link_name):
             os.remove(link_name)
         # ../models/240915_有声书_殓葬禁忌/古装_老八,DZVC_灵异 -> 9d87535ca928d1a5214dd7f84b39d6ad
-        os.symlink(f"../models/{prj_dir}/{actor}", link_name)
+        os.symlink(f"../models/{os.path.basename(prj_dir)}/{actor}", link_name)
         export_dayan_json(
             "{}/utt2spk".format(args.des_dir), f"{src_dir.parents[0]}/dayan.json"
         )
