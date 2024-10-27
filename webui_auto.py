@@ -19,17 +19,31 @@ from tools.vc import (
     load_vc_actor,
     load_vc_actor_ref,
     request_vc,
+    vc_output_path,
 )
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+DATA_ROOT = os.environ["DATA_ROOT"] if "DATA_ROOT" in os.environ else "./data"
+OUTPUT_ROOT = (
+    os.environ["OUTPUT_ROOT"] if "OUTPUT_ROOT" in os.environ else f"{DATA_ROOT}/outputs"
+)
 # global vars
 wavs = {"v": 0}
 vcs = {"v": 0}
 projects = load_projects()
 hash = ""
 device = torch.cuda.is_available() and torch.cuda.get_device_name(0) or "CPU"
+
+
+def data_model_path(model_dir, project_name, actor):
+    # {DATA_ROOT=data/cosy}/models/{PRJ_NAME}/{actor}/{path=output}
+    return Path(DATA_ROOT) / "models" / project_name / actor / model_dir
+
+
+def data_output_path(base_path, project_name):
+    return Path(DATA_ROOT) / "outputs" / project_name / "cosy" / base_path
 
 
 def download_all_wavs(wavs, hash=hash):
@@ -47,7 +61,8 @@ def download_all_wavs(wavs, hash=hash):
 
 def load_wav_cache(project, hash: str, type="gen") -> list[str]:
     """
-    # data/.outputs/240915_有声书_殓葬禁忌/cosy/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
+    # OUTPUT_ROOT/240915_有声书_殓葬禁忌/cosy/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
+    # OUTPUT_ROOT/240915_有声书_殓葬禁忌/vc/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
     Args:
         project (_type_): 240915_有声书_殓葬禁忌
         hash (bool): _description_
@@ -56,9 +71,9 @@ def load_wav_cache(project, hash: str, type="gen") -> list[str]:
         list[str]:  pathes of matched wavs
     """
     pattern = (
-        f"data/.outputs/{project}/cosy/*/{hash}*.wav"
+        f"{OUTPUT_ROOT}/{project}/cosy/{hash}/{hash}*.wav"
         if type == "gen"
-        else f"data/.outputs/{project}/vc/*/{hash}*.wav"
+        else f"{OUTPUT_ROOT}/{project}/vc/{hash}/{hash}*.wav"
     )
     files = glob.glob(pattern)
 
@@ -72,7 +87,7 @@ def load_wav_cache(project, hash: str, type="gen") -> list[str]:
 
 def play_ref_audio(project, actor, voice):
     audio_path = (
-        Path("./data") / project / actor / "train" / f'{voice.split(" ")[0]}.wav'
+        Path(DATA_ROOT) / "models" / project / actor / "train" / f'{voice.split(" ")[0]}.wav'
     )
     return audio_path
 
@@ -101,12 +116,12 @@ def upload_textbook(text_url: str, project: str):
 
 
 def start_inference(
-    project_name, output_path, actor, text, voice, id: str, r_seed, g_seed, wavs=wavs
+    project_name, model_dir, actor, text, voice, id: str, r_seed, g_seed, wavs=wavs
 ):
     """开始推理
     Args:
         project_name (str): 项目名称
-        output_path (str): 输出路径
+        model_dir (str): 模型路径
         text (str): 推理文本
         voice (str): 选定音色
         id (str): uniqid
@@ -120,17 +135,17 @@ def start_inference(
         raise gr.Error("no voice.")
     mode = "zero_shot"
     epoch = 0
-    pre_model_path = Path("pretrained_models/CosyVoice-300M")
-    output_path = Path(f"data/{project_name}/{actor}/{output_path}")
-    train_list = output_path / "train" / "temp2" / "data.list"
+    pre_model_path = Path(f"{DATA_ROOT}/pretrained_models/CosyVoice-300M")
+    model_path = data_model_path(model_dir, project_name, actor)
+    train_list = model_path / "train" / "temp2" / "data.list"
     utt2data_list = Path(train_list).with_name("utt2data.list")
-    llm_model = output_path / "models" / f"epoch_{epoch}_whole.pt"
+    llm_model = model_path / "models" / f"epoch_{epoch}_whole.pt"
     llm_model = pre_model_path / "llm.pt"  # just using default pt
     flow_model = pre_model_path / "flow.pt"
     hifigan_model = pre_model_path / "hift.pt"
-    res_dir = Path(f"data/.outputs/{project_name}/cosy/") / id.rpartition("-")[0]
+    res_dir = data_output_path(id.rpartition("-")[0], project_name)
     res_dir.mkdir(exist_ok=True, parents=True)
-    json_path = str(Path(res_dir) / "tts_text.json")
+    json_path = str(Path(res_dir) / f"{id}.json")
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
@@ -173,15 +188,15 @@ def start_inference(
             PYTHONPATH="./:./third_party/Matcha-TTS:./third_party/AcademiCodec",
         ),
     )
-    output_path = str(Path(res_dir) / f"{id}.wav")
-    wavs[id] = output_path
-    return output_path
+    output_file = str(Path(res_dir) / f"{id}.wav")
+    wavs[id] = output_file
+    return output_file
 
 
 def start_vc(project: str, actor: str, audio_path: str, id, tone_key=0, vcs=vcs):
     if not audio_path:
         gr.Error("没有已生成的推理音频，无法VC")
-    res_dir = Path(f"./data/.outputs/{project}/vc/{id.rpartition('-')[0]}")
+    res_dir = vc_output_path(id.rpartition("-")[0], project)
     res_dir.mkdir(exist_ok=True, parents=True)
     output_path = str(Path(res_dir) / f"{id}.wav")
     status, message = request_vc(project, actor, audio_path, output_path, tone_key)
@@ -317,8 +332,8 @@ with gr.Blocks(fill_width=True) as demo:
                             _project,
                             actors[0],  # use parsed actorname than original
                             [task["V"], task["A"], task["D"]],
-                            emo_kw=f'{task["emo_1"]}{task["emo_2"]}', # for kwmatch
-                            text=task["text"], # for asr match
+                            emo_kw=f'{task["emo_1"]}{task["emo_2"]}',  # for kwmatch
+                            text=task["text"],  # for asr match
                         )
                         ref_ctl = gr.Dropdown(
                             choices=refrences,

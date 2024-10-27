@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
-
+import os
 import onnxruntime
 import torch
 import torchaudio
 import torchaudio.compliance.kaldi as kaldi
 from tqdm import tqdm
 
+DATA_ROOT = os.environ["DATA_ROOT"] if "DATA_ROOT" in os.environ else "./data"
 
 def main(args):
     utt2wav, utt2spk = {}, {}
@@ -41,7 +42,7 @@ def main(args):
     )
 
     # gen spk2info.pt        #{'embedding': 'speech_token': 'speech_feat': }
-    base_spkinfo = torch.load("./pretrained_models/CosyVoice-300M/spk2info.pt")
+    base_spkinfo = torch.load(f"{DATA_ROOT}/pretrained_models/CosyVoice-300M/spk2info.pt")
 
     utt2embedding, spk2embedding = {}, {}
     for utt in tqdm(utt2wav.keys()):

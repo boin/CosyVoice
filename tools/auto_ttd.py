@@ -4,11 +4,14 @@ from pathlib import Path
 
 from tools.vad import findNearestKW, findNearestVAD, findNearestASR
 
-TTD_LIB = "./ttd_lib/"
+DATA_ROOT = os.environ["DATA_ROOT"] if "DATA_ROOT" in os.environ else "./data"
+MODEL_ROOT = f"{DATA_ROOT}/models"
+TTD_LIB = f"{DATA_ROOT}/ttd_lib/"
 LIB_SUB = "02_E-Motion/Tag"
 
 
-def load_projects(root_dir="./data"):
+
+def load_projects(root_dir=MODEL_ROOT):
     return [
         d.name
         for d in os.scandir(f"{root_dir}")
@@ -16,7 +19,7 @@ def load_projects(root_dir="./data"):
     ]
 
 
-def load_prj_actors(project_name, root_dir="./data"):
+def load_prj_actors(project_name, root_dir=MODEL_ROOT):
     return [d.name for d in os.scandir(f"{root_dir}/{project_name}") if d.is_dir()]
 
 
@@ -45,7 +48,7 @@ def check_proj_actor_wavs(project_name, actor):
 
 
 def get_uut_by_name(project_name, actor, exact=False):
-    for dir in [d.name for d in os.scandir(f"./data/{project_name}") if d.is_dir()]:
+    for dir in [d.name for d in os.scandir(f"{MODEL_ROOT}/{project_name}") if d.is_dir()]:
         if dir.find(actor) > -1:
             return dir
     if not exact:  # 非精确返回最后一个结果，作为debug
@@ -75,7 +78,7 @@ def load_refrence(
         emo_kw : strings of emo KeyWord
     """
     # print("load refrence called:", project_name, actor, emo, emo_kw)
-    root_dir = f"./data/{project_name}/{actor}"
+    root_dir = f"{MODEL_ROOT}/{project_name}/{actor}"
     # for compability
     content = Path(f"{root_dir}/output/train/temp1/utt2spk").read_text().splitlines()
     if emo:
@@ -86,7 +89,7 @@ def load_refrence(
         ]
         # print(vad)
         # vad find 10 matches
-        vad_content = findNearestVAD(vad, content, 10)
+        vad_content = findNearestVAD(vad, content, 20)
     voices = vad_content
     # kw_voice = findNearestKW(emo_kw, content)
     # if kw_voice != voices[0]: #dont add same voice
@@ -111,7 +114,7 @@ def load_actor(actor: str, project_name):
         []
     """
     # print('load actor called:', actor, project_name)
-    root_dir = f"./data/{project_name}"
+    root_dir = f"{MODEL_ROOT}/{project_name}"
     # content = Path(f"{root_dir}/output/train/temp1/spk2utt").read_text()
     content = [f.name for f in os.scandir(root_dir) if f.is_dir()]
     # print('loaded content:', content, 'need:', actor)

@@ -9,13 +9,13 @@ import math
 from tqdm import tqdm
 from hashlib import md5
 from tools.dayan import export_dayan_json
-from tools.auto_ttd import TTD_LIB, LIB_SUB
+from tools.auto_ttd import TTD_LIB, LIB_SUB, DATA_ROOT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger()
 
 # 240915_有声书_殓葬禁忌/02_E-Motion/Tag/古装_师父,GZJ_灵异/旁白_脸红_003_507828_谁能拿到紫青双剑，一切都看运气。.wav
-LNIK_DIR = "./data/.links"
+LNIK_DIR = f"{DATA_ROOT}/links"
 os.makedirs(LNIK_DIR, mode=0o777, exist_ok=True)
 
 
@@ -38,8 +38,8 @@ def init_from_lib(prj_name, actor, split_ratio):
     stop_num = (
         math.floor(count * split_ratio) * 2
     )  # 最小1， 0为自定义分配模式 # 小于0则是不分配一点给验证集
-    tr_dir = f"./data/{prj_name}/{actor}/train"
-    vl_dir = f"./data/{prj_name}/{actor}/val"
+    tr_dir = Path(DATA_ROOT) / "models" / prj_name / actor / "train"
+    vl_dir = Path(DATA_ROOT) / "models" / prj_name / actor / "val"
     tr_cnt = 0
     vl_cnt = 0
     os.makedirs(tr_dir, exist_ok=True)

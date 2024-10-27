@@ -20,9 +20,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 device = torch.cuda.is_available() and torch.cuda.get_device_name(0) or "CPU"
 
+DATA_ROOT = os.environ["DATA_ROOT"] if "DATA_ROOT" in os.environ else "./data"
+OUTPUT_ROOT = (
+    os.environ["OUTPUT_ROOT"] if "OUTPUT_ROOT" in os.environ else f"{DATA_ROOT}/outputs"
+)
 
-def data_path(path, base, actor):
-    return Path("./data") / base / actor / path
+def data_model_path(model_dir, project_name, actor):
+    # {DATA_ROOT=data/cosy}/models/{PRJ_NAME}/{actor}/{path=output}
+    return Path(DATA_ROOT) / "models" / project_name / actor / model_dir
+
+
+def data_output_path(base_path, project_name):
+    # {OUTPUT_ROOT}/{project_name}/cosy/{base_path}
+    return Path(OUTPUT_ROOT) / project_name / "cosy" / base_path
 
 
 def log(data):
@@ -61,7 +71,10 @@ def refresh_lib_actors(project_input_dir):
 
 def refresh_voice(project_input_dir, output_path, actor):
     content = (
-        data_path(output_path, project_input_dir, actor) / "train" / "temp1" / "utt2spk"
+        data_model_path(output_path, project_input_dir, actor)
+        / "train"
+        / "temp1"
+        / "utt2spk"
     ).read_text()
     voices = []
     for item in content.split("\n"):
@@ -99,12 +112,12 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
     for state, input_path in zip(
         ["train", "val"],
         [
-            data_path("train", project_input_dir, actor),
-            data_path("val", project_input_dir, actor),
+            data_model_path("train", project_input_dir, actor),
+            data_model_path("val", project_input_dir, actor),
         ],
     ):
-        temp1 = data_path(output_path, project_input_dir, actor) / state / "temp1"
-        temp2 = data_path(output_path, project_input_dir, actor) / state / "temp2"
+        temp1 = data_model_path(output_path, project_input_dir, actor) / state / "temp1"
+        temp2 = data_model_path(output_path, project_input_dir, actor) / state / "temp2"
         try:
             temp1.mkdir(parents=True)
             temp2.mkdir(parents=True)
@@ -151,7 +164,7 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
                 "--dir",
                 str(temp1),
                 "--onnx_path",
-                "pretrained_models/CosyVoice-300M/campplus.onnx",
+                f"{DATA_ROOT}/pretrained_models/CosyVoice-300M/campplus.onnx",
             ],
             # capture_output= True
         )
@@ -168,7 +181,7 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
                 "--dir",
                 str(temp1),
                 "--onnx_path",
-                "pretrained_models/CosyVoice-300M/speech_tokenizer_v1.onnx",
+                f"{DATA_ROOT}/pretrained_models/CosyVoice-300M/speech_tokenizer_v1.onnx",
             ],
             # capture_output= True
         )
@@ -202,10 +215,10 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
 
 
 def train(project_input_dir, output_path, actor, pre_model_path, thread_num, max_epoch):
-    output_path = data_path(output_path, project_input_dir, actor)
+    output_path = data_model_path(output_path, project_input_dir, actor)
     train_list = output_path / "train/temp2/data.list"
     val_list = output_path / "val/temp2/data.list"
-    model_dir = output_path / "models"
+    model_dir = output_path / "pts"
     model_dir.mkdir(exist_ok=True, parents=True)
 
     out = subprocess.run(
@@ -267,33 +280,34 @@ def train(project_input_dir, output_path, actor, pre_model_path, thread_num, max
 def inference(
     mode,
     project_input_dir,
-    output_path,
+    model_output_path,
     epoch,
     pre_model_path,
     text,
     actor,
     voice,
     seed,
-    spk_mix,
-    mix_file,
-    w1,
-    w2,
+    spk_mix: str | None = None,
+    mix_file: str | None = None,
+    w1: str | None = None,
+    w2: str | None = None,
 ):
     if not text:
         raise gr.Error("no text.")
     if not voice:
         raise gr.Error("no voice.")
-    output_path = data_path(output_path, project_input_dir, actor)
-    train_list = os.path.join(output_path, "train", "temp2", "data.list")
+    output_path = data_output_path(actor, project_input_dir)
+    model_path = data_model_path(model_output_path, project_input_dir, actor)
+    train_list = os.path.join(model_path, "train", "temp2", "data.list")
     utt2data_list = Path(train_list).with_name("utt2data.list")
     llm_model = (
         epoch
-        and os.path.join(output_path, "models", f"epoch_{epoch}_whole.pt")
+        and os.path.join(model_path, "pts", f"epoch_{epoch}_whole.pt")
         or os.path.join(pre_model_path, "llm.pt")
     )
     flow_model = os.path.join(pre_model_path, "flow.pt")
     hifigan_model = os.path.join(pre_model_path, "hift.pt")
-    res_dir = Path(output_path) / "outputs"
+    res_dir = Path(output_path)
     res_dir.mkdir(exist_ok=True, parents=True)
     voice = voice.split(" - ")[1]  # spkr1 - voice1 => voice1
     if not voice:
@@ -397,7 +411,7 @@ with gr.Blocks() as demo:
             info="预处理与训练最终会输出在项目根目录的本文件夹下，没有会自动新建，一般不用改",
         )
         pretrained_model_path = gr.Text(
-            "pretrained_models/CosyVoice-300M",
+            f"{DATA_ROOT}/pretrained_models/CosyVoice-300M",
             label="预训练模型文件夹",
             info="可选 300M-SFT/330M-Insturct 一般不用改",
         )
@@ -480,6 +494,7 @@ with gr.Blocks() as demo:
                 sources=[],
                 scale=2,
             )
+            """ 暂时关闭音色融合
             with gr.Column(scale=2):
                 mix_file = gr.FileExplorer(
                     label="加载融合音色底模",
@@ -502,6 +517,7 @@ with gr.Blocks() as demo:
         with gr.Row(visible=False):
             w1 = gr.Number(value=0.5, label="首选音色权重", interactive=True)
             w2 = gr.Number(value=0.5, label="融合音色权重", interactive=True)
+        """
         text = gr.Text(label="输入文字")
         inference_btn = gr.Button("开始推理", variant="primary")
         out_audio = gr.Audio(label="音频输出")
@@ -514,10 +530,10 @@ with gr.Blocks() as demo:
     voices.change(
         load_refrence_wav, inputs=[voices, project_input_dir, actor], outputs=preview
     )
-    spk_mix.change(load_refrence_wav, [spk_mix, mix_file, actor], preview2)
+    # spk_mix.change(load_refrence_wav, [spk_mix, mix_file, actor], preview2)
 
     seed_button.click(generate_seed, inputs=[], outputs=seed)
-    mix_file.change(load_mix_ref, inputs=[mix_file], outputs=[spk_mix])
+    # mix_file.change(load_mix_ref, inputs=[mix_file], outputs=[spk_mix])
 
     preprocess_btn.click(
         preprocess,
@@ -548,10 +564,10 @@ with gr.Blocks() as demo:
             actor,
             voices,
             seed,
-            spk_mix,
-            mix_file,
-            w1,
-            w2,
+            # spk_mix,
+            # mix_file,
+            # w1,
+            # w2,
         ],
         outputs=out_audio,
     )

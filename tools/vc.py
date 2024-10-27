@@ -3,7 +3,15 @@ import os
 import logging as logger
 from pathlib import Path
 
-VC_WEIGHT_ROOT = "./data/.vc_weights"
+DATA_ROOT = os.environ["DATA_ROOT"] if "DATA_ROOT" in os.environ else "./data"
+OUTPUT_ROOT = (
+    os.environ["OUTPUT_ROOT"] if "OUTPUT_ROOT" in os.environ else f"{DATA_ROOT}/outputs"
+)
+VC_WEIGHT_ROOT = f"{DATA_ROOT}/vc_weights"
+
+
+def vc_output_path(base_path, project_name) -> str:
+    return Path(f"{OUTPUT_ROOT}/{project_name}/vc/{base_path}")
 
 
 def load_vc_actor(project_name: str, actor: str | None = None):
@@ -20,10 +28,10 @@ def load_vc_actor(project_name: str, actor: str | None = None):
     return actors
 
 
-def load_keytone_from_actor(actor: str) -> str | None:
+def load_keytone_from_actor(actor: str) -> str:
     # 师父,师傅_ZZJ,MY,XXXX_+3_001
     parts = actor.split("_")
-    return parts[2] if len(parts) == 4 else None
+    return parts[2] if len(parts) == 4 else "0"
 
 
 def load_vc_actor_ref(project_name, actor):
@@ -78,10 +86,5 @@ def request_vc(
 
     except requests.exceptions.RequestException as e:
         message = f"Request error: {e}"
-        logger.error(message)
-        return 1, message
-
-    except Exception as e:
-        message = f"An unexpected error occurred: {e}"
         logger.error(message)
         return 1, message

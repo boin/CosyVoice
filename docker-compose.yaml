@@ -10,13 +10,12 @@ services:
       - PYTHONIOENCODING=UTF-8       
       - PYTHONPATH=./:./third_party/Matcha-TTS:./third_party/AcademiCodec
     volumes:
-      - /home/docker/mnt/TeamSpace/TTD-Space/项目:/opt/CosyVoice/ttd_lib
-      - /home/docker/mnt/TTD-Data/cosy-voice/.cache:/opt/CosyVoice/.cache
-      - /home/docker/mnt/TTD-Data/cosy-voice/output:/tmp/cosy-voice/output
-      - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Voices:/opt/CosyVoice/voices
-      - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/CosyVoice_Train:/opt/CosyVoice/data
-      - /home/docker/mnt/TTD-Data/cosy-voice/pretrained_models:/opt/CosyVoice/pretrained_models
-      - /home/docker/mnt/TeamSpace/TTD-Space/applications/rvc-web/assets/weights:/opt/CosyVoice/data/.vc_weights
+      - /data/ttd/cosy-voice/:/opt/CosyVoice/data  # data_root
+      - /home/docker/mnt/TeamSpace/TTD-Space/项目:/opt/CosyVoice/data/ttd_lib  #train voice lib
+      - /data/ttd/cosy-voice/.cache:/opt/CosyVoice/.cache # hs/ms cache dir
+      - /home/docker/mnt/TTD-Data/cosy-voice/output:/opt/CosyVoice/data/outputs   #output general
+      - /home/docker/mnt/TTD-Data/cosy-voice/hub:/tmp/cosy-voice/output          #output for ttd.hub
+      - /home/docker/mnt/TeamSpace/TTD-Space/applications/rvc-web/assets/weights:/opt/CosyVoice/data/vc_weights  #to be move later
     working_dir: /opt/CosyVoice
     shm_size: 32G
     stdin_open: true
