@@ -3,7 +3,7 @@ import os
 import json
 from pathlib import Path
 
-base_folder = "/opt/CosyVoice/data/.links"
+base_folder = "/opt/CosyVoice/data/links"
 
 
 def make_ref_link(actor, voice: str | None = None) -> str:
@@ -25,7 +25,7 @@ def make_voices(actor, voices: dict):
             best_voice = key
     # 复制最佳声音到 intro_file
     best_file = Path(base_folder) / actor / "train" / f"{best_voice}.wav"
-    if best_file.stat().st_size != intro_file.stat().st_size:
+    if not intro_file.exists() or best_file.stat().st_size != intro_file.stat().st_size:
         intro_file.write_bytes(best_file.read_bytes())
     return result
 
