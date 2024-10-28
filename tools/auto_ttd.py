@@ -94,9 +94,10 @@ def load_refrence(
     # kw_voice = findNearestKW(emo_kw, content)
     # if kw_voice != voices[0]: #dont add same voice
     #    voices.insert(0, kw_voice) # KW voice first
-    asr_match = findNearestASR(text, content)
-    if asr_match and asr_match != voices[0]:
-        voices.insert(0, voices.pop(voices.index(asr_match)))
+    # asr_match 
+    #asr_match = findNearestASR(text, content)
+    #if asr_match and asr_match != voices[0]:
+    #    voices.insert(0, voices.pop(voices.index(asr_match)))
     return [f.split(" ")[0] for f in voices]
 
 
