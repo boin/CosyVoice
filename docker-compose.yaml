@@ -14,7 +14,7 @@ services:
       - /home/docker/mnt/TeamSpace/TTD-Space/项目:/opt/CosyVoice/data/ttd_lib  #train voice lib
       - /data/ttd/cosy-voice/.cache:/opt/CosyVoice/.cache # hs/ms cache dir
       - /home/docker/mnt/TTD-Data/cosy-voice/output:/opt/CosyVoice/data/outputs   #output general
-      - /home/docker/mnt/TTD-Data/cosy-voice/hub:/tmp/cosy-voice/output          #output for ttd.hub
+      - /home/docker/mnt/TTD-Data/cosy-voice/hub:/tmp/cosy-voice/hub          #output for ttd.hub
       - /home/docker/mnt/TeamSpace/TTD-Space/applications/rvc-web/assets/weights:/opt/CosyVoice/data/vc_weights  #to be move later
     working_dir: /opt/CosyVoice
     shm_size: 32G
