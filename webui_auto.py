@@ -185,7 +185,7 @@ def start_vc(project: str, actor: str, audio_path: str, id, text, tone_key=0):
     res_dir = vc_output_path(id.rpartition("-")[0], project)
     res_dir.mkdir(exist_ok=True, parents=True)
     # 旁白_001_ASR.wav
-    out_name = f'{actor.split("_")[1]}_{id}_{text[:30]}'
+    out_name = f'{actor.split("_")[0]}_{id}_{text[:30]}'
     output_path = str(Path(res_dir) / f"{out_name}.wav")
     status, message = request_vc(project, actor, audio_path, output_path, tone_key)
     if status == 1:
