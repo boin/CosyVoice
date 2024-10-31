@@ -30,10 +30,11 @@ OUTPUT_ROOT = (
     os.environ["OUTPUT_ROOT"] if "OUTPUT_ROOT" in os.environ else f"{DATA_ROOT}/outputs"
 )
 # global vars
-wavs = {"v": 0}
-vcs = {"v": 0}
+wavs = {}
+vcs = {}
 projects = load_projects()
 hash = ""
+chap_name = ""
 device = torch.cuda.is_available() and torch.cuda.get_device_name(0) or "CPU"
 
 
@@ -47,47 +48,26 @@ def data_output_path(base_path, project_name):
 
 
 def download_all_wavs(wavs, hash=hash):
-    logging.debug(f"download all calle with:{wavs}, {hash}")
-    fn = f"/tmp/gradio/{hash}.zip"
+    logging.debug(f"download all calle with:{wavs}, {hash}, {chap_name}")
+    fn = f"/tmp/gradio/{chap_name}.zip"
     with ZipFile(fn, "w") as zip:
         for f in wavs:
             if not Path(str(wavs[f])).is_file():
                 continue
-            zip.write(wavs[f], f"{f}.wav")
+            zip.write(wavs[f], f"{Path(wavs[f]).stem}.wav")
     zip.close()
     logging.info(f"zipfile {fn} writed. size {(Path(fn).lstat()).st_size}")
     return gr.DownloadButton(label="点击下载", value=fn, variant="stop")
 
 
-def load_wav_cache(project, hash: str, type="gen") -> list[str]:
-    """
-    # OUTPUT_ROOT/240915_有声书_殓葬禁忌/cosy/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
-    # OUTPUT_ROOT/240915_有声书_殓葬禁忌/vc/359d487835f93a92122e54b1a105d19e/359d487835f93a92122e54b1a105d19e-2.wav
-    Args:
-        project (_type_): 240915_有声书_殓葬禁忌
-        hash (bool): _description_
-        type (str, optional): gen 或者 vc. Defaults to "gen".
-    Returns:
-        list[str]:  pathes of matched wavs
-    """
-    pattern = (
-        f"{OUTPUT_ROOT}/{project}/cosy/{hash}/{hash}*.wav"
-        if type == "gen"
-        else f"{OUTPUT_ROOT}/{project}/vc/{hash}/{hash}*.wav"
-    )
-    files = glob.glob(pattern)
-
-    wavs = {}
-    for f in files:
-        idx = Path(f).stem
-        wavs[idx] = f
-    # print(pattern, wavs)
-    return wavs
-
-
 def play_ref_audio(project, actor, voice):
     audio_path = (
-        Path(DATA_ROOT) / "models" / project / actor / "train" / f'{voice.split(" ")[0]}.wav'
+        Path(DATA_ROOT)
+        / "models"
+        / project
+        / actor
+        / "train"
+        / f'{voice.split(" ")[0]}.wav'
     )
     return audio_path
 
@@ -98,25 +78,27 @@ def play_vc_ref_audio(project, actor):
 
 
 def upload_textbook(text_url: str, project: str):
-    global hash, wavs, vcs
+    global hash, wavs, vcs, chap_name
     hash = md5(Path(text_url).read_bytes()).hexdigest()  # save file hash for future use
+    chap_name = Path(text_url).stem
     workbook = openpyxl.load_workbook(text_url, read_only=True)
     rows = [row for row in workbook.active.rows]
     if not len(rows) > 0:
         raise gr.Error("Excel文档为空！")
     lines = list(dialog_parser(rows))
-    all_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
-    all_vcs = load_wav_cache(project, hash, "vc")  # also vc
-    wavs["v"] += 1
-    vcs["v"] += 1
+    # all_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
+    # all_vcs = load_wav_cache(project, hash, "vc")  # also vc
+    # reset wavs and vc on txt change
+    wavs = {}
+    vcs = {}
     # 合并所有 WAV 和 VC
-    wavs.update(all_wavs)
-    vcs.update(all_vcs)
+    # wavs.update(all_wavs)
+    # vcs.update(all_vcs)
     return lines
 
 
 def start_inference(
-    project_name, model_dir, actor, text, voice, id: str, r_seed, g_seed, wavs=wavs
+    project_name, model_dir, actor, text, voice, id: str, r_seed, g_seed
 ):
     """开始推理
     Args:
@@ -128,6 +110,7 @@ def start_inference(
         r_seed (str): 随机种子
         g_seed (str): 全局随机种子
     """
+    global wavs
     # 240915_有声书_殓葬禁忌  旁白_脸红_002_507828_并且在峨眉危难之际自动出现，化解危机。  Says: 我，是一名殓葬师！ {}
     if not text:
         raise gr.Error("no text.")
@@ -143,9 +126,11 @@ def start_inference(
     llm_model = pre_model_path / "llm.pt"  # just using default pt
     flow_model = pre_model_path / "flow.pt"
     hifigan_model = pre_model_path / "hift.pt"
-    res_dir = data_output_path(id.rpartition("-")[0], project_name)
+    res_dir = data_output_path(hash, project_name)
     res_dir.mkdir(exist_ok=True, parents=True)
     json_path = str(Path(res_dir) / f"{id}.json")
+    # 旁白_001_ASR.wav
+    out_name = f'{actor.split("_")[1]}_{id}_{text[:30]}'
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
@@ -175,7 +160,7 @@ def start_inference(
         "--rseed",
         str(r_seed or g_seed),
         "--file_name",
-        str(id),
+        out_name,
     ]
     logging.info(
         f"call inference {project_name} => actor: {actor} voice: {voice} says: {text} with cmd {cmd}"
@@ -188,17 +173,20 @@ def start_inference(
             PYTHONPATH="./:./third_party/Matcha-TTS:./third_party/AcademiCodec",
         ),
     )
-    output_file = str(Path(res_dir) / f"{id}.wav")
+    output_file = str(Path(res_dir) / f"{out_name}.wav")
     wavs[id] = output_file
     return output_file
 
 
-def start_vc(project: str, actor: str, audio_path: str, id, tone_key=0, vcs=vcs):
+def start_vc(project: str, actor: str, audio_path: str, id, text, tone_key=0):
+    global vcs
     if not audio_path:
         gr.Error("没有已生成的推理音频，无法VC")
     res_dir = vc_output_path(id.rpartition("-")[0], project)
     res_dir.mkdir(exist_ok=True, parents=True)
-    output_path = str(Path(res_dir) / f"{id}.wav")
+    # 旁白_001_ASR.wav
+    out_name = f'{actor.split("_")[1]}_{id}_{text[:30]}'
+    output_path = str(Path(res_dir) / f"{out_name}.wav")
     status, message = request_vc(project, actor, audio_path, output_path, tone_key)
     if status == 1:
         gr.Error(f"VC 失败：{message}")
@@ -265,21 +253,19 @@ with gr.Blocks(fill_width=True) as demo:
 
     @gr.render(inputs=[lines, project])
     def render_lines(_lines, _project):
-        logging.debug(
-            "re-render wavs version with active project:", _project, wavs["v"]
-        )
+        logging.debug("re-render wavs version with active project:", _project, wavs)
         task_list = _lines
         # print(hash, task_list[0], _wavs, "\n")
         for task in task_list:
             # print(task)
-            idx = f'{hash}-{task["id"]}'
+            idx = f'{task["id"]:03}'  # 003 087
             wav_url = idx in wavs.keys() and wavs[idx] or None
             vc_url = idx in vcs.keys() and vcs[idx] or None
             with gr.Row():
                 with gr.Column():
                     with gr.Row():
                         id = gr.Text(
-                            f'{hash}-{task["id"]}',
+                            idx,
                             visible=False,
                         )
                         gr.Text(
@@ -421,7 +407,7 @@ with gr.Blocks(fill_width=True) as demo:
                 )
                 vc_btn.click(reset_audio, outputs=preview_audio).then(
                     start_vc,
-                    inputs=[project, vc_actor, preview_audio, id, tone_key],
+                    inputs=[project, vc_actor, preview_audio, id, text, tone_key],
                     outputs=[preview_audio],
                 )
                 preview_vc_btn.click(
