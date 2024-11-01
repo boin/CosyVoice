@@ -44,7 +44,7 @@ def request_vc(
 ) -> (int, str):
     """
     发送语音转换请求并保存结果。
-     audio_path = ‘http://ttd-server/file/cosy-voice/output/5b/d9/5bd95bc0-3359-45e6-bd87-243de0d46138.wav’
+     audio_path = 'http://ttd-server/file/cosy-voice/output/5b/d9/5bd95bc0-3359-45e6-bd87-243de0d46138.wav'
      定义要测试的 URL
 
     参数:
