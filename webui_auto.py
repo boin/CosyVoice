@@ -1,7 +1,9 @@
+import glob
 import json
 import logging
 import os
 import random
+import re
 import subprocess
 from hashlib import md5
 from pathlib import Path
@@ -53,11 +55,41 @@ def download_all_wavs(wavs, hash=hash):
         for f in wavs:
             if not Path(str(wavs[f])).is_file():
                 continue
-            logging.info(f'download zip adding {wavs[f]}')
+            logging.info(f"download zip adding {wavs[f]}")
             zip.write(wavs[f], f"{Path(wavs[f]).stem}.wav")
     zip.close()
-    logging.info(f"zipfile {fn} writed. size {(Path(fn).lstat()).st_size}")
+    logging.info(
+        f"zipfile {fn} writed {len(zip.namelist())} files. size {(Path(fn).lstat()).st_size}"
+    )
     return gr.DownloadButton(label="点击下载", value=fn, variant="stop")
+
+
+def load_wav_cache(project, hash: str, type="cosy") -> list[str]:
+    """
+    # OUTPUT_ROOT/240915_有声书_殓葬禁忌/cosy/359d487835f93a92122e54b1a105d19e/{id}_.*.wav
+    # OUTPUT_ROOT/240915_有声书_殓葬禁忌/vc/359d487835f93a92122e54b1a105d19e/{id}_.*.wav
+    Args:
+        project (_type_): 240915_有声书_殓葬禁忌
+        hash (bool): _description_
+        type (str, optional): cosy 或者 vc. Defaults to "cosy".
+    Returns:
+        list[str]:  pathes of matched wavs
+    """
+    pattern = (
+        f"{OUTPUT_ROOT}/{project}/cosy/{hash}/*.wav"
+        if type == "cosy"
+        else f"{OUTPUT_ROOT}/{project}/vc/{hash}/*.wav"
+    )
+    files = glob.glob(pattern)
+
+    wavs = {}
+    for f in files:
+        idx = re.match(r"^(\d{3})_", Path(f).stem)
+        if not idx:
+            continue
+        wavs[idx.group(1)] = f
+    # print(wavs)
+    return wavs
 
 
 def play_ref_audio(project, actor, voice):
@@ -94,14 +126,14 @@ def upload_textbook(text_url: str, project: str):
     if not len(rows) > 0:
         raise gr.Error("Excel文档为空！")
     lines = list(dialog_parser(rows))
-    # all_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
-    # all_vcs = load_wav_cache(project, hash, "vc")  # also vc
+    all_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
+    all_vcs = load_wav_cache(project, hash, "vc")  # also vc
     # reset wavs and vc on txt change
     wavs.clear()
     vcs.clear()
     # 合并所有 WAV 和 VC
-    # wavs.update(all_wavs)
-    # vcs.update(all_vcs)
+    wavs.update(all_wavs)
+    vcs.update(all_vcs)
     return lines
 
 
