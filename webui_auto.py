@@ -34,8 +34,6 @@ OUTPUT_ROOT = (
 wavs = {}
 vcs = {}
 projects = load_projects()
-hash = ""
-chap_name = ""
 device = torch.cuda.is_available() and torch.cuda.get_device_name(0) or "CPU"
 
 
@@ -48,14 +46,14 @@ def data_output_path(base_path, project_name):
     return Path(DATA_ROOT) / "outputs" / project_name / "cosy" / base_path
 
 
-def download_all_wavs(wavs, hash=hash):
-    logging.info(f"download all calle with:{wavs}, {hash}, {chap_name}")
+def download_all_wavs(wavs, chap_name):
+    logging.info(f"download all calle with:{len(wavs)}, {chap_name}")
     fn = f"/tmp/gradio/{chap_name}.zip"
     with ZipFile(fn, "w") as zip:
         for f in wavs:
             if not Path(str(wavs[f])).is_file():
                 continue
-            logging.info(f"download zip adding {wavs[f]}")
+            logging.debug(f"download zip adding {wavs[f]}")
             zip.write(wavs[f], f"{Path(wavs[f]).stem}.wav")
     zip.close()
     logging.info(
@@ -87,7 +85,15 @@ def load_wav_cache(project, hash: str, type="cosy") -> list[str]:
         idx = re.match(r"^(\d{3})_", Path(f).stem)
         if not idx:
             continue
-        wavs[idx.group(1)] = f
+        id = idx.group(1)
+        if id in wavs:  # already has a version
+            # 新文件比缓存要新
+            if Path(f).stat().st_mtime > Path(wavs[id]).stat().st_mtime:
+                Path(wavs[id]).unlink(True)  # delete_old
+            else:  # 新文件比缓存老
+                Path(f).unlink(True)
+                continue  #
+        wavs[id] = str(f)
     # print(wavs)
     return wavs
 
@@ -118,27 +124,30 @@ def load_actor_ref(project, actor, emo, text):
 
 
 def upload_textbook(text_url: str, project: str):
-    global hash, wavs, vcs, chap_name
+    global wavs, vcs
     hash = md5(Path(text_url).read_bytes()).hexdigest()  # save file hash for future use
     chap_name = Path(text_url).stem
+    all_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
+    all_vcs = load_wav_cache(project, hash, "vc")  # also vc
+    # reset wavs and vc on txt change
+    wavs[hash] = {}
+    vcs[hash] = {}
+    # 合并所有 WAV 和 VC
+    wavs[hash].update(all_wavs)
+    vcs[hash].update(all_vcs)
+    return hash, chap_name
+
+
+def update_lines(text_url):
     workbook = openpyxl.load_workbook(text_url, read_only=True)
     rows = [row for row in workbook.active.rows]
     if not len(rows) > 0:
         raise gr.Error("Excel文档为空！")
-    lines = list(dialog_parser(rows))
-    all_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
-    all_vcs = load_wav_cache(project, hash, "vc")  # also vc
-    # reset wavs and vc on txt change
-    wavs.clear()
-    vcs.clear()
-    # 合并所有 WAV 和 VC
-    wavs.update(all_wavs)
-    vcs.update(all_vcs)
-    return lines
+    return list(dialog_parser(rows))
 
 
 def start_inference(
-    project_name, model_dir, actor, text, voice, id: str, r_seed, g_seed
+    project_name, model_dir, actor, text, voice, id: str, hash, r_seed, g_seed
 ):
     """开始推理
     Args:
@@ -150,7 +159,7 @@ def start_inference(
         r_seed (str): 随机种子
         g_seed (str): 全局随机种子
     """
-    global wavs, hash
+    global wavs
     # 240915_有声书_殓葬禁忌  旁白_脸红_002_507828_并且在峨眉危难之际自动出现，化解危机。  Says: 我，是一名殓葬师！ {}
     if not text:
         raise gr.Error("no text.")
@@ -214,15 +223,15 @@ def start_inference(
         ),
     )
     output_file = str(Path(res_dir) / f"{out_name}.wav")
-    wavs[id] = output_file
+    wavs[hash][id] = output_file
     return output_file
 
 
-def start_vc(project: str, actor: str, audio_path: str, id, text, tone_key=0):
-    global wavs, vcs, hash
+def start_vc(project: str, actor: str, audio_path: str, id, hash, text, tone_key=0):
+    global wavs, vcs
     if id not in wavs and not audio_path:
         return gr.Error(f"第{id}句没有已生成的推理音频，无法VC")
-    audio_path = wavs[id] or audio_path # 优先使用 wavs / preview_audio 不太可靠
+    audio_path = wavs[hash][id] or audio_path  # 优先使用 wavs / preview_audio 不太可靠
     res_dir = vc_output_path(hash, project)
     res_dir.mkdir(exist_ok=True, parents=True)
     # 旁白_001_ASR.wav
@@ -231,7 +240,7 @@ def start_vc(project: str, actor: str, audio_path: str, id, text, tone_key=0):
     status, message = request_vc(project, actor, audio_path, output_path, tone_key)
     if status == 1:
         return gr.Error(f"VC 失败：{message}")
-    vcs[id] = output_path
+    vcs[hash][id] = output_path
     return output_path
 
 
@@ -239,8 +248,11 @@ with gr.Blocks(fill_width=True) as demo:
     # wavs.value = upload_textbook(
     #     "data/Ch001_天命，将至_QC.xlsx", projects[-1], wavs.value
     # )
+    hash = gr.State("")
+    chap_name = gr.State("")
     lines = gr.State([])
-    lines.change(lambda x: logging.debug(f"wavs changed.{x}\n"), inputs=lines)
+    lines.change(lambda x: logging.debug(f"lines changed.{x}"), inputs=lines)
+    hash.change(lambda x: logging.debug(f"hash changed {x}"), inputs=hash)
     with gr.Row():
         with gr.Column(variant="panel"):
             project = gr.Dropdown(
@@ -264,8 +276,10 @@ with gr.Blocks(fill_width=True) as demo:
             output_dir = gr.Textbox("output", label="输出路径")
             gr.Text(container=False, value="当前显卡: " + device)
         upload = gr.File(label="上传台词本", file_types=["text", ".xlsx"])
-        upload.upload(upload_textbook, inputs=[upload, project], outputs=[lines])
-        upload.clear(lambda: [], outputs=lines)
+        upload.upload(
+            upload_textbook, inputs=[upload, project], outputs=[hash, chap_name]
+        ).then(update_lines, inputs=upload, outputs=lines)
+        upload.clear(lambda: ([], "", ""), outputs=[lines, hash, chap_name])
     with gr.Row():
         gen_all = gr.Button("一键推理", variant="primary")
         gen_all.click(
@@ -278,7 +292,11 @@ with gr.Blocks(fill_width=True) as demo:
             js="()=>{[...document.querySelectorAll('.gen-btn')].reduce((p,e)=>p.then(()=>(e.click(),new Promise(r=>setTimeout(r, 50)))),Promise.resolve());}",
         )
         dl_all = gr.DownloadButton("打包下载推理")
-        dl_all.click(lambda: download_all_wavs(wavs, hash), outputs=[dl_all])
+        dl_all.click(
+            lambda x, y: download_all_wavs(wavs[x], y),
+            inputs=[hash, chap_name],
+            outputs=[dl_all],
+        )
         vc_all = gr.Button("一键VC", variant="primary")
         vc_all.click(
             None,
@@ -290,18 +308,28 @@ with gr.Blocks(fill_width=True) as demo:
             js="()=>{[...document.querySelectorAll('.vc-btn')].reduce((p,e)=>p.then(()=>(e.click(),new Promise(r=>setTimeout(r, 50)))),Promise.resolve());}",
         )
         dl_vc_all = gr.DownloadButton("打包下载VC")
-        dl_vc_all.click(lambda: download_all_wavs(vcs, hash), outputs=[dl_vc_all])
+        dl_vc_all.click(
+            lambda x, y: download_all_wavs(vcs[x], f"{y}_VC"),
+            inputs=[hash, chap_name],
+            outputs=[dl_vc_all],
+        )
 
-    @gr.render(inputs=[lines, project])
-    def render_lines(_lines, _project):
-        logging.debug("re-render wavs version with active project:", _project, wavs)
+    @gr.render(inputs=[lines, hash, project])
+    def render_lines(_lines, _hash, _project):
+        logging.debug(
+            f"re-render wavs version with active project: {_project} {_hash} {len(wavs)}"
+        )
         task_list = _lines
-        # print(hash, task_list[0], _wavs, "\n")
+        _wavs = wavs[_hash] if _hash in wavs else {}
+        _vcs = vcs[_hash] if _hash in vcs else {}
+        logging.debug(
+            f"hash: {_hash} len of lines: {len(task_list)} active wav cache: {_wavs}"
+        )
         for task in task_list:
             # print(task)
             idx = f'{task["id"]:03}'  # 003 087
-            wav_url = idx in wavs.keys() and wavs[idx] or None
-            vc_url = idx in vcs.keys() and vcs[idx] or None
+            wav_url = idx in _wavs.keys() and _wavs[idx] or None
+            vc_url = idx in _vcs.keys() and _vcs[idx] or None
             with gr.Row():
                 with gr.Column():
                     with gr.Row():
@@ -430,7 +458,7 @@ with gr.Blocks(fill_width=True) as demo:
 
                 # to preserve idx variable
                 def reset_audio(id=idx):
-                    return id in wavs and gr.Audio(wavs[id]) or None
+                    return id in _wavs and gr.Audio(_wavs[id]) or None
 
                 gen_btn.click(
                     start_inference,
@@ -441,6 +469,7 @@ with gr.Blocks(fill_width=True) as demo:
                         text,
                         ref_ctl,
                         id,
+                        hash,
                         _seed,
                         seed,
                     ],
@@ -448,11 +477,11 @@ with gr.Blocks(fill_width=True) as demo:
                 )
                 vc_btn.click(reset_audio, outputs=preview_audio).then(
                     start_vc,
-                    inputs=[project, vc_actor, preview_audio, id, text, tone_key],
+                    inputs=[project, vc_actor, preview_audio, id, hash, text, tone_key],
                     outputs=[preview_audio],
                 )
                 preview_vc_btn.click(
-                    lambda id=idx: gr.Audio(vcs[id]) if id in vcs else None,
+                    lambda id=idx: gr.Audio(_vcs[id]) if id in _vcs else None,
                     outputs=preview_audio,
                 )
                 vc_actor.change(
