@@ -219,9 +219,10 @@ def start_inference(
 
 
 def start_vc(project: str, actor: str, audio_path: str, id, text, tone_key=0):
-    global vcs, hash
-    if not audio_path:
-        raise gr.Error(f"第{id}句没有已生成的推理音频，无法VC")
+    global wavs, vcs, hash
+    if id not in wavs and not audio_path:
+        return gr.Error(f"第{id}句没有已生成的推理音频，无法VC")
+    audio_path = wavs[id] or audio_path # 优先使用 wavs / preview_audio 不太可靠
     res_dir = vc_output_path(hash, project)
     res_dir.mkdir(exist_ok=True, parents=True)
     # 旁白_001_ASR.wav
@@ -229,7 +230,7 @@ def start_vc(project: str, actor: str, audio_path: str, id, text, tone_key=0):
     output_path = str(Path(res_dir) / f"{out_name}.wav")
     status, message = request_vc(project, actor, audio_path, output_path, tone_key)
     if status == 1:
-        raise gr.Error(f"VC 失败：{message}")
+        return gr.Error(f"VC 失败：{message}")
     vcs[id] = output_path
     return output_path
 
