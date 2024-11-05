@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 import random
 import subprocess
 from hashlib import md5
@@ -48,12 +47,13 @@ def data_output_path(base_path, project_name):
 
 
 def download_all_wavs(wavs, hash=hash):
-    logging.debug(f"download all calle with:{wavs}, {hash}, {chap_name}")
+    logging.info(f"download all calle with:{wavs}, {hash}, {chap_name}")
     fn = f"/tmp/gradio/{chap_name}.zip"
     with ZipFile(fn, "w") as zip:
         for f in wavs:
             if not Path(str(wavs[f])).is_file():
                 continue
+            logging.info(f'download zip adding {wavs[f]}')
             zip.write(wavs[f], f"{Path(wavs[f]).stem}.wav")
     zip.close()
     logging.info(f"zipfile {fn} writed. size {(Path(fn).lstat()).st_size}")
@@ -97,8 +97,8 @@ def upload_textbook(text_url: str, project: str):
     # all_wavs = load_wav_cache(project, hash)  # merge old wavs with new hash values
     # all_vcs = load_wav_cache(project, hash, "vc")  # also vc
     # reset wavs and vc on txt change
-    wavs = {}
-    vcs = {}
+    wavs.clear()
+    vcs.clear()
     # 合并所有 WAV 和 VC
     # wavs.update(all_wavs)
     # vcs.update(all_vcs)
@@ -118,7 +118,7 @@ def start_inference(
         r_seed (str): 随机种子
         g_seed (str): 全局随机种子
     """
-    global wavs
+    global wavs, hash
     # 240915_有声书_殓葬禁忌  旁白_脸红_002_507828_并且在峨眉危难之际自动出现，化解危机。  Says: 我，是一名殓葬师！ {}
     if not text:
         raise gr.Error("no text.")
@@ -138,7 +138,7 @@ def start_inference(
     res_dir.mkdir(exist_ok=True, parents=True)
     json_path = str(Path(res_dir) / f"{id}.json")
     # 旁白_001_ASR.wav
-    out_name = f'{actor.split("_")[1]}_{id}_{text[:30]}'
+    out_name = f'{id}_{actor.split("_")[1]}_{text[:30]}'
     with open(json_path, "wt", encoding="utf-8") as f:
         json.dump({voice: [text]}, f)
     # subprocess.run([r'.\pyr11\python.exe', 'cosyvoice/bin/inference.py',
@@ -187,17 +187,17 @@ def start_inference(
 
 
 def start_vc(project: str, actor: str, audio_path: str, id, text, tone_key=0):
-    global vcs
+    global vcs, hash
     if not audio_path:
-        gr.Error("没有已生成的推理音频，无法VC")
-    res_dir = vc_output_path(id.rpartition("-")[0], project)
+        raise gr.Error(f"第{id}句没有已生成的推理音频，无法VC")
+    res_dir = vc_output_path(hash, project)
     res_dir.mkdir(exist_ok=True, parents=True)
     # 旁白_001_ASR.wav
-    out_name = f'{actor.split("_")[0]}_{id}_{text[:30]}'
+    out_name = f'{id}_{actor.split("_")[0]}_{text[:30]}'
     output_path = str(Path(res_dir) / f"{out_name}.wav")
     status, message = request_vc(project, actor, audio_path, output_path, tone_key)
     if status == 1:
-        gr.Error(f"VC 失败：{message}")
+        raise gr.Error(f"VC 失败：{message}")
     vcs[id] = output_path
     return output_path
 
