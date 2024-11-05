@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import random
 import subprocess
 from hashlib import md5
@@ -74,6 +75,14 @@ def play_ref_audio(project, actor, voice):
 def play_vc_ref_audio(project, actor):
     path = load_vc_actor_ref(project, actor)
     return path
+
+
+def load_actor_ref(project, actor, emo, text):
+    emo = emo.split(" ")  # [不满,无奈,V:,25.6,A:,27.9,D:,41.7]
+    vad = [float(emo[3]) / 100, float(emo[5]) / 100, float(emo[7]) / 100]
+    emo_kw = [emo[0], emo[1]]
+    voices = load_refrence(project, actor, vad, emo_kw, text)
+    return gr.Dropdown(choices=voices, value=voices[0])
 
 
 def upload_textbook(text_url: str, project: str):
@@ -298,7 +307,7 @@ with gr.Blocks(fill_width=True) as demo:
                             lambda: None, outputs=_seed
                         )
                     with gr.Row():
-                        gr.Text(
+                        emo_ctl = gr.Text(
                             f'{task["emo_1"]} {task["emo_2"]} V: {float(task["V"])*100:.1f} A: {float(task["A"])*100:.1f} D: {float(task["D"])*100:.1f}',
                             show_label=False,
                             container=False,
@@ -415,6 +424,11 @@ with gr.Blocks(fill_width=True) as demo:
                 )
                 vc_actor.change(
                     load_keytone_from_actor, inputs=vc_actor, outputs=tone_key
+                )
+                actor.change(
+                    load_actor_ref,
+                    inputs=[project, actor, emo_ctl, text],
+                    outputs=ref_ctl,
                 )
                 gr.on(
                     triggers=[ref_ctl.focus, ref_ctl.select],

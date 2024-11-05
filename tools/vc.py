@@ -65,7 +65,9 @@ def request_vc(
         "actor": f"{project_name}/{sid}",
         "index": tone_key,
     }
-
+    logger.info(
+        f"requesting vc with payload: {request_payload} input: {audio_path} output: {result_name}"
+    )
     try:
         with open(audio_path, "rb") as audio_file:
             files = {"file": audio_file}
@@ -76,7 +78,9 @@ def request_vc(
             with open(result_name, "wb") as wav_file:
                 wav_file.write(response.content)
 
-            logger.info("Response length: %d", len(response.content))
+            logger.info(
+                f"VC OK. write {result_name} with length: { len(response.content)}"
+            )
             return 0, "Success"
 
     except requests.exceptions.HTTPError as http_err:
@@ -88,3 +92,8 @@ def request_vc(
         message = f"Request error: {e}"
         logger.error(message)
         return 1, message
+
+    except Exception as e:
+        message = f"Error: {e}"
+        logger.error(e)
+        return 1, str(e)
