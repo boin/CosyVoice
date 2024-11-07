@@ -25,9 +25,15 @@ OUTPUT_ROOT = (
     os.environ["OUTPUT_ROOT"] if "OUTPUT_ROOT" in os.environ else f"{DATA_ROOT}/outputs"
 )
 
+
 def data_model_path(model_dir, project_name, actor):
     # {DATA_ROOT=data/cosy}/models/{PRJ_NAME}/{actor}/{path=output}
-    return Path(DATA_ROOT) / "models" / project_name / actor / model_dir
+    dir = (
+        Path(DATA_ROOT) / "models" / project_name / actor / model_dir
+        if project_name != "/"  # 兼容大雁训练
+        else Path(DATA_ROOT) / "models" / actor / model_dir
+    )
+    return dir
 
 
 def data_output_path(base_path, project_name):
@@ -104,7 +110,7 @@ def load_mix_ref(pt_dir):
     return gr.Dropdown(choices=voices)
 
 
-def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag, raw_dir=""):
+def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag, raw_dir):
     # check src first, but not for raw_dir
     if not raw_dir and ttd.check_proj_actor_wavs(project_input_dir, actor) < 1:
         raise gr.Error("该角色没有可训练的文件")
@@ -127,7 +133,6 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag, r
         logging.info(
             f'processing state {state}, with input_path:  {project_input_dir},  {input_path},  temp_path:  {temp1},  {temp2}, "src_split_ratio:" {split_ratio}, "force_flag" {force_flag}'
         )
-
         # subprocess.run([r'.\py311\python.exe', 'local/prepare_data.py',
         out = subprocess.run(
             [
@@ -144,7 +149,7 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag, r
                 "--force_flag",
                 str(force_flag),  # str True / False
                 "--raw_dir",
-                str(raw_dir)
+                str(raw_dir),
             ],
             # capture_output= True
             env=dict(
@@ -157,7 +162,6 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag, r
             log(f"{state} 数据初始化完成")
         else:
             return log(f"{state} 数据初始化出错 {out}")
-
         # subprocess.run([r'.\py311\python.exe', 'tools/extract_embedding.py',
         out = subprocess.run(
             [
@@ -417,6 +421,7 @@ with gr.Blocks() as demo:
             label="预训练模型文件夹",
             info="可选 300M-SFT/330M-Insturct 一般不用改",
         )
+        raw_dir = gr.Text(visible=False)
     with gr.Tab("训练"):
         with gr.Row():
             split_ratio = gr.Radio(
@@ -539,7 +544,7 @@ with gr.Blocks() as demo:
 
     preprocess_btn.click(
         preprocess,
-        inputs=[project_input_dir, output_dir, actor, split_ratio, re_init],
+        inputs=[project_input_dir, output_dir, actor, split_ratio, re_init, raw_dir],
         outputs=status,
     )
     train_btn.click(
