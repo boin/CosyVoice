@@ -104,9 +104,9 @@ def load_mix_ref(pt_dir):
     return gr.Dropdown(choices=voices)
 
 
-def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
-    # check src first
-    if ttd.check_proj_actor_wavs(project_input_dir, actor) < 1:
+def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag, raw_dir=""):
+    # check src first, but not for raw_dir
+    if not raw_dir and ttd.check_proj_actor_wavs(project_input_dir, actor) < 1:
         raise gr.Error("该角色没有可训练的文件")
 
     for state, input_path in zip(
@@ -143,6 +143,8 @@ def preprocess(project_input_dir, output_path, actor, split_ratio, force_flag):
                 str(split_ratio),
                 "--force_flag",
                 str(force_flag),  # str True / False
+                "--raw_dir",
+                str(raw_dir)
             ],
             # capture_output= True
             env=dict(

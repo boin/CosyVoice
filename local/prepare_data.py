@@ -19,12 +19,13 @@ LNIK_DIR = f"{DATA_ROOT}/links"
 os.makedirs(LNIK_DIR, mode=0o777, exist_ok=True)
 
 
-def init_from_lib(prj_name, actor, split_ratio):
+def init_from_lib(prj_name, actor, split_ratio, src_dir=None):
     """
-    项目名，角色名, 训练集和验证集的分配比例
+    项目名，角色名, 训练集和验证集的分配比例，
+    增加项目外部语料库
     """
 
-    src_dir = Path(TTD_LIB) / prj_name / LIB_SUB / actor
+    src_dir = src_dir or Path(TTD_LIB) / prj_name / LIB_SUB / actor
     if not src_dir.is_dir():
         raise gr.Error(f"导入语料库 {src_dir} 目录不存在!")
     wavs = [
@@ -106,6 +107,7 @@ def main():
     stage = src_dir.name  # train
     prj_dir = src_dir.parents[1]  # data/有声书_殓葬禁忌
     actor = args.actor  # 古装_师父,GZJ_灵异
+    raw_dir = args.raw_dir
 
     folder_hash = md5()
 
@@ -118,7 +120,10 @@ def main():
             logger.warning("强制重新初始化")
             shutil.rmtree(Path(f"{prj_dir}/{actor}/{stage}"), ignore_errors=True)
         [tc, cc] = init_from_lib(
-            os.path.basename(prj_dir), actor=actor, split_ratio=args.init_split_ratio
+            os.path.basename(prj_dir),
+            actor=actor,
+            split_ratio=args.init_split_ratio,
+            src_dir=raw_dir,
         )
         logger.info(
             f"{prj_dir} {actor} {stage}初始化完毕， 训练集文件数量 {tc}， 测试集文件数量 {cc}"
@@ -152,7 +157,7 @@ def main():
     with open("{}/spk2utt".format(args.des_dir), "w") as f:
         for k, v in spk2utt.items():
             f.write("{} {}\n".format(k, " ".join(v)))
-    if stage == "train":
+    if not raw_dir and stage == "train":
         link_name = Path(LNIK_DIR) / folder_hash.hexdigest()
         if os.path.exists(link_name):
             os.remove(link_name)
@@ -170,6 +175,7 @@ if __name__ == "__main__":
     parser.add_argument("--actor", type=str)
     parser.add_argument("--init_split_ratio", type=int)
     parser.add_argument("--force_flag", type=str)
+    parser.add_argument("--raw_dir", type=str, default=None)
 
     args = parser.parse_args()
     main()

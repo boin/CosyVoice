@@ -58,7 +58,7 @@ def request_vc(
     tuple: 状态码和消息。
     """
 
-    url = "http://ttd-server:7878/infer_vc"
+    url = "http://ttd-server/infer_vc"
 
     # 请求的 payload
     request_payload = {
