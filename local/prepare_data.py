@@ -41,7 +41,7 @@ def init_from_lib(prj_name, actor, split_ratio, src_dir=None):
     )  # 最小1， 0为自定义分配模式 # 小于0则是不分配一点给验证集
     model_dir = (
         Path(DATA_ROOT) / "models" / actor
-        if prj_name == "models" # dayan 特殊逻辑
+        if prj_name == "models"  # dayan 特殊逻辑
         else Path(DATA_ROOT) / "models" / prj_name / actor
     )
     tr_dir = model_dir / "train"
@@ -111,7 +111,7 @@ def main():
     src_dir = Path(args.src_dir)
     stage = src_dir.name  # train
     prj_dir = src_dir.parents[1]  # data/有声书_殓葬禁忌
-    # dayan  模式下会变成 prj_dir = models，特殊处理，后续重构
+    # dayan  模式下会变成 prj_dir = data/models，特殊处理，后续重构
     actor = args.actor  # 古装_师父,GZJ_灵异
     raw_dir = args.raw_dir
 
@@ -164,12 +164,22 @@ def main():
         for k, v in spk2utt.items():
             f.write("{} {}\n".format(k, " ".join(v)))
     if stage == "train":
-        if not raw_dir:
-            link_name = Path(LNIK_DIR) / folder_hash.hexdigest()
-            if os.path.exists(link_name):
-                os.remove(link_name)
-            # ../models/240915_有声书_殓葬禁忌/古装_老八,DZVC_灵异 -> 9d87535ca928d1a5214dd7f84b39d6ad
-            os.symlink(f"../models/{os.path.basename(prj_dir)}/{actor}", link_name)
+        link_name = (
+            Path(LNIK_DIR)
+            / (md5(actor.encode("utf-8")) if raw_dir else folder_hash).hexdigest()
+        )
+        try:
+            os.unlink(link_name)
+        except Exception:
+            pass
+        # ../models/240915_有声书_殓葬禁忌/古装_老八,DZVC_灵异 -> 9d87535ca928d1a5214dd7f84b39d6ad
+        # (dayan) ../models/古装_老八,DZVC_灵异 -> 9d87535ca928d1a5214dd7f84b39d6ad
+        link_src = (
+            f"../models/{actor}"
+            if raw_dir
+            else f"../models/{os.path.basename(prj_dir)}/{actor}"
+        )
+        os.symlink(link_src, link_name)
         export_dayan_json(
             "{}/utt2spk".format(args.des_dir), f"{src_dir.parents[0]}/dayan.json"
         )

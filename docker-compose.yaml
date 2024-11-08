@@ -6,6 +6,7 @@ services:
     environment:
       - is_half=False
       - is_share=False
+      - TZ=Asia/Shanghai
       - LC_ALL=en_US.UTF-8
       - PYTHONIOENCODING=UTF-8       
       - PYTHONPATH=./:./third_party/Matcha-TTS:./third_party/AcademiCodec
