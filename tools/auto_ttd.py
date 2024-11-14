@@ -10,7 +10,6 @@ TTD_LIB = f"{DATA_ROOT}/ttd_lib/"
 LIB_SUB = "02_E-Motion/Tag"
 
 
-
 def load_projects(root_dir=MODEL_ROOT):
     return [
         d.name
@@ -48,7 +47,9 @@ def check_proj_actor_wavs(project_name, actor):
 
 
 def get_uut_by_name(project_name, actor, exact=False):
-    for dir in [d.name for d in os.scandir(f"{MODEL_ROOT}/{project_name}") if d.is_dir()]:
+    for dir in [
+        d.name for d in os.scandir(f"{MODEL_ROOT}/{project_name}") if d.is_dir()
+    ]:
         if dir.find(actor) > -1:
             return dir
     if not exact:  # 非精确返回最后一个结果，作为debug
@@ -94,9 +95,9 @@ def load_refrence(
     # kw_voice = findNearestKW(emo_kw, content)
     # if kw_voice != voices[0]: #dont add same voice
     #    voices.insert(0, kw_voice) # KW voice first
-    # asr_match 
-    #asr_match = findNearestASR(text, content)
-    #if asr_match and asr_match != voices[0]:
+    # asr_match
+    # asr_match = findNearestASR(text, content)
+    # if asr_match and asr_match != voices[0]:
     #    voices.insert(0, voices.pop(voices.index(asr_match)))
     return [f.split(" ")[0] for f in voices]
 
@@ -117,10 +118,15 @@ def load_actor(actor: str, project_name):
     # print('load actor called:', actor, project_name)
     root_dir = f"{MODEL_ROOT}/{project_name}"
     # content = Path(f"{root_dir}/output/train/temp1/spk2utt").read_text()
-    content = [f.name for f in os.scandir(root_dir) if f.is_dir()]
+    with os.scandir(root_dir) as entries:
+        # 创建一个列表，包含文件和其修改时间
+        dirs = [(f.name, f.stat().st_mtime) for f in entries if f.is_dir()]
+    # 根据修改时间进行排序，越新越后
+    content = sorted(dirs, key=lambda x: x[1])
+
     # print('loaded content:', content, 'need:', actor)
     spks = []
-    for item in content:
+    for item, _ in content:
         if item and item.find("_") > -1:
             spkr = item.split("_")[1]  # 旁白,ZYH,
             if spkr.find(actor) > -1:
