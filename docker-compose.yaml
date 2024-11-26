@@ -12,7 +12,7 @@ services:
       - PYTHONPATH=./:./third_party/Matcha-TTS:./third_party/AcademiCodec
     volumes:
       - /data/ttd/cosy-voice/:/opt/CosyVoice/data  # data_root
-      - /home/docker/mnt/TeamSpace/TTD-Space/项目:/opt/CosyVoice/data/ttd_lib  #train voice lib
+      - /mnt/192.168.100.7/00_项目:/opt/CosyVoice/data/ttd_lib  #train voice lib
       - /data/ttd/cosy-voice/.cache:/opt/CosyVoice/.cache # hs/ms cache dir
       - /home/docker/mnt/TeamSpace/TTD-Space/applications/CosyVoice/output:/opt/CosyVoice/data/outputs   #output general
       - /home/docker/mnt/TTD-Data/cosy-voice/hub:/tmp/cosy-voice/hub          #output for ttd.hub
@@ -34,9 +34,10 @@ services:
     profiles:
       - production
     extends: cosy-cpu
+    cmd: ["python", "webui_auto.py", "2>&1", "|", "stdbuf", "-oL", "-eL", "tee", "-i", "logs/auto.log"]
     ports: !override
     #  - "9886:8000"
-      - "9887:9883"
+    #  - "9887:9883"
       - "8001:9884"
     deploy:
       resources:
@@ -50,9 +51,10 @@ services:
     profiles:
       - production
     extends: cosy-cpu
+    cmd: ["python", "webui_auto.py", "2>&1", "|", "stdbuf", "-oL", "-eL", "tee", "-i", "logs/auto.log"]
     ports: !override
     #  - "9876:8000"
-      - "9877:9883"
+    #  - "9877:9883"
       - "8002:9884"
 
     deploy:
@@ -67,9 +69,10 @@ services:
     profiles:
       - production
     extends: cosy-cpu
+    cmd: ["python", "webui_auto.py", "2>&1", "|", "stdbuf", "-oL", "-eL", "tee", "-i", "logs/auto.log"]
     ports: !override
     #  - "9866:8000"
-      - "9867:9883"
+    #  - "9867:9883"
       - "8003:9884"
     deploy:
       resources:
