@@ -34,7 +34,7 @@ services:
     profiles:
       - production
     extends: cosy-cpu
-    ommand: ["python", "webui_auto.py", "2>&1", "|", "stdbuf", "-oL", "-eL", "tee", "-i", "logs/auto.log"]
+    command: ["python", "webui_auto.py", "2>&1", "|", "stdbuf", "-oL", "-eL", "tee", "-i", "logs/auto.log"]
     ports: !override
     #  - "9886:8000"
     #  - "9887:9883"
