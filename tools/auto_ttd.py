@@ -26,7 +26,7 @@ def load_lib_projects(root_dir=TTD_LIB):
     lib_projects = [
         d.name
         for d in os.scandir(f"{root_dir}")
-        if d.is_dir() and not d.name.startswith(".")
+        if d.is_dir() and not d.name.startswith(".") and not d.name.startswith("@")
     ]
     return lib_projects
 
