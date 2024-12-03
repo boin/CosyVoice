@@ -31,7 +31,9 @@ def init_from_lib(prj_name, actor, split_ratio, src_dir=None):
     wavs = [
         f.path
         for f in os.scandir(src_dir)
-        if f.is_file() and f.name.endswith(".wav") and not f.name.startswith(".")
+        if f.is_file()
+        and f.name.endswith(".wav")
+        and not f.name.startswith(".")
     ]
     count = len(wavs)
     if count < 2:

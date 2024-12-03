@@ -14,12 +14,16 @@ def load_projects(root_dir=MODEL_ROOT):
     return [
         d.name
         for d in os.scandir(f"{root_dir}")
-        if d.is_dir() and not d.name.startswith(".")
+        if d.is_dir() and not d.name.startswith(".") and not d.name.startswith("@")
     ]
 
 
 def load_prj_actors(project_name, root_dir=MODEL_ROOT):
-    return [d.name for d in os.scandir(f"{root_dir}/{project_name}") if d.is_dir()]
+    return [
+        d.name
+        for d in os.scandir(f"{root_dir}/{project_name}")
+        if d.is_dir() and not d.name.startswith(".") and not d.name.startswith("@")
+    ]
 
 
 def load_lib_projects(root_dir=TTD_LIB):
@@ -33,7 +37,9 @@ def load_lib_projects(root_dir=TTD_LIB):
 
 def load_lib_prj_actors(project_name, root_dir=TTD_LIB):
     lib_actors = [
-        d.name for d in os.scandir(f"{root_dir}/{project_name}/{LIB_SUB}") if d.is_dir()
+        d.name
+        for d in os.scandir(f"{root_dir}/{project_name}/{LIB_SUB}")
+        if d.is_dir() and not d.name.startswith(".") and not d.name.startswith("@")
     ]
     # print(lib_actors)
     return lib_actors
@@ -48,7 +54,9 @@ def check_proj_actor_wavs(project_name, actor):
 
 def get_uut_by_name(project_name, actor, exact=False):
     for dir in [
-        d.name for d in os.scandir(f"{MODEL_ROOT}/{project_name}") if d.is_dir()
+        d.name
+        for d in os.scandir(f"{MODEL_ROOT}/{project_name}")
+        if d.is_dir() and not d.name.startswith(".") and not d.name.startswith("@")
     ]:
         if dir.find(actor) > -1:
             return dir
@@ -120,7 +128,11 @@ def load_actor(actor: str, project_name):
     # content = Path(f"{root_dir}/output/train/temp1/spk2utt").read_text()
     with os.scandir(root_dir) as entries:
         # 创建一个列表，包含文件和其修改时间
-        dirs = [(f.name, f.stat().st_mtime) for f in entries if f.is_dir()]
+        dirs = [
+            (f.name, f.stat().st_mtime)
+            for f in entries
+            if f.is_dir() and not f.name.startswith(".") and not f.name.startswith("@")
+        ]
     # 根据修改时间进行排序，越新越后
     content = sorted(dirs, key=lambda x: x[1])
 
