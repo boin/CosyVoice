@@ -11,8 +11,8 @@ services:
       - PYTHONIOENCODING=UTF-8       
       - PYTHONPATH=./:./third_party/Matcha-TTS:./third_party/AcademiCodec
     volumes:
-      - /TTD-Data/cosy-voice/:/opt/CosyVoice/data  # data_root
       - /TTD/00_项目:/opt/CosyVoice/data/ttd_lib  #train voice lib
+      - /TTD-Data/cosy-voice/:/opt/CosyVoice/data  # data_root
       - /TTD-Data/cosy-voice/.cache:/opt/CosyVoice/.cache # hs/ms cache dir
       - /TTD-Data/cosy-voice/output:/opt/CosyVoice/data/outputs   #output general
       - /TTD-Data/rvc-web/weights:/opt/CosyVoice/data/vc_weights  #to be move later
