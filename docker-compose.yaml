@@ -27,7 +27,7 @@ services:
     ports: #For CPU
     #- "9856:8000" #factory_ui
     - "9857:9883" #train
-    - "8004:9884" #auto
+    #- "8004:9884" #auto
 
   cosy-3070:
     container_name: '3070'
