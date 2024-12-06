@@ -31,9 +31,7 @@ def init_from_lib(prj_name, actor, split_ratio, src_dir=None):
     wavs = [
         f.path
         for f in os.scandir(src_dir)
-        if f.is_file()
-        and f.name.endswith(".wav")
-        and not f.name.startswith(".")
+        if f.is_file() and f.name.endswith(".wav") and not f.name.startswith(".")
     ]
     count = len(wavs)
     if count < 2:
@@ -79,9 +77,9 @@ def prepare_normalize_txt(file):
     if not os.path.exists(txt_path):
         # logger.warning('{} do not exsist'.format(txt_path))
         meta = os.path.basename(file).rpartition(".wav")[0].split("_")
-        if len(meta) != 5:
-            raise gr.Error(f"文件元数据错误: {file}")
-        Path(txt_path).write_text(meta[4])
+        if len(meta) <= 5:  # 兼容PRI
+            raise gr.Error(f"文件名元数据错误: {meta} ")
+        Path(txt_path).write_text(meta[4] if len(meta) == 5 else meta[5])
         logger.info(f"{txt_path} created.")
     return txt_path
 
@@ -165,7 +163,7 @@ def main():
     with open("{}/spk2utt".format(args.des_dir), "w") as f:
         for k, v in spk2utt.items():
             f.write("{} {}\n".format(k, " ".join(v)))
-    if stage == "train":
+    if stage == "train" and False: # dayan 不需要了…
         link_name = (
             Path(LNIK_DIR)
             / (md5(actor.encode("utf-8")) if raw_dir else folder_hash).hexdigest()
