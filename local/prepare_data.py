@@ -77,7 +77,7 @@ def prepare_normalize_txt(file):
     if not os.path.exists(txt_path):
         # logger.warning('{} do not exsist'.format(txt_path))
         meta = os.path.basename(file).rpartition(".wav")[0].split("_")
-        if len(meta) <= 5:  # 兼容PRI
+        if len(meta) < 5:  # 兼容PRI
             raise gr.Error(f"文件名元数据错误: {meta} ")
         Path(txt_path).write_text(meta[4] if len(meta) == 5 else meta[5])
         logger.info(f"{txt_path} created.")
