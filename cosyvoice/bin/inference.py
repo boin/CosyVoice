@@ -37,12 +37,14 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
+
 def parse_tts_text(text: str):
     try:
         json.loads(text)
     except Exception:
         text = text.lstrip("'").rstrip("'")
     return text
+
 
 def get_args():
     parser = argparse.ArgumentParser(description="inference with your model")
@@ -116,12 +118,12 @@ def main():
     model.load(args.llm_model, args.flow_model, args.hifigan_model)
 
     tts_text = args.tts_text
-    if not os.path.isfile(tts_text): # tts_text 是 raw_json
+    if not os.path.isfile(tts_text):  # tts_text 是 raw_json
         tts_text = parse_tts_text(tts_text)
         tmpf = NamedTemporaryFile(mode="w+", suffix=".json")
         tmpf.write(tts_text)
-        tmpf.seek(0) # w模式不seek回去，后面都读不到内容
-        logging.info(f'{tts_text} is not file. write it to {tmpf.name}')
+        tmpf.seek(0)  # w模式不seek回去，后面都读不到内容
+        logging.info(f"{tts_text} is not file. write it to {tmpf.name}")
         tts_text = tmpf.name
 
     # 用参数中的合成文本，prompt数据初始化一个测试数据集并放到一个加载器（Torch.Dataloader）中
@@ -213,17 +215,16 @@ def main():
             model_output = model.inference(**model_input)
             # testing
             out_audio = model_output["tts_speech"]
+            np_wav = out_audio.cpu().numpy().flatten()  # 1D array
             # 以下是把数据存成音频文件（wav.scp），不重要了。
             tts_key = args.file_name or f"{utts[0]}_{tts_index[0]}"
             tts_fn = os.path.join(args.result_dir, f"{tts_key}.wav")
-            torchaudio.save(tts_fn, out_audio, sample_rate=22050)
-            # audio normalize
-            data, sr = sf.read(tts_fn)  # load audio
-            # measure the loudness first
+            sr = 22050
             meter = pyln.Meter(sr)  # create BS.1770 meter
-            loudness = meter.integrated_loudness(data)
-            # loudness normalize audio to -25 dB LUFS
-            out_audio = pyln.normalize.loudness(data, loudness, -25.0)
+            loudness = meter.integrated_loudness(np_wav)
+            print(f"loudness: {loudness} normalize to -23 LUFS")
+            # loudness normalize audio to -23 dB LUFS
+            out_audio = pyln.normalize.loudness(np_wav, loudness, -23.0)
             sf.write(tts_fn, out_audio, sr)
             f.write(f"{tts_key} {tts_fn}\n")
             f.flush()
